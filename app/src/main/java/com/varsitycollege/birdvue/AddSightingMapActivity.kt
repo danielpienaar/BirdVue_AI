@@ -318,6 +318,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
         val scale = 2
         val format = "png"
         val filePath = "photoMap_${System.currentTimeMillis()}"
+//        test
 
         CoroutineScope(Dispatchers.Main).launch {
              downloadUrlMap = withContext(Dispatchers.IO) {
