@@ -35,7 +35,7 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/map_fragment"
-        app:layout_constraintVertical_bias="0.78">
+        app:layout_constraintVertical_bias="0.5">
 
         <ImageView
             android:id="@+id/openGalleryButton"
@@ -49,7 +49,7 @@
             android:id="@+id/openGalleryIcon"
             android:layout_width="70dp"
             android:layout_height="70dp"
-            android:src="@drawable/icon_add"
+            android:src="@drawable/baseline_camera_alt_24"
             android:layout_gravity="center" />
     </androidx.cardview.widget.CardView>
 
@@ -57,7 +57,7 @@
         android:id="@+id/map_fragment"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
+        android:layout_height="300dp"
         android:paddingBottom="10dp"
         app:layout_constraintBottom_toTopOf="@+id/datePicker1"
         app:layout_constraintEnd_toEndOf="parent"
@@ -75,9 +75,9 @@
         app:boxCornerRadiusTopEnd="20dp"
         app:boxCornerRadiusTopStart="20dp"
         app:boxStrokeWidth="2dp"
-        app:layout_constraintBottom_toTopOf="@+id/overviewSubmitButton"
+        app:layout_constraintBottom_toTopOf="@+id/aiAutofillButton"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.218"
+        app:layout_constraintHorizontal_bias="0.2"
         app:layout_constraintStart_toStartOf="parent">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -109,18 +109,24 @@
             android:layout_height="wrap_content" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <TextView
-        android:id="@+id/photosTextViewOverview"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="Add Photo"
-        android:textColor="?colorSecondary"
-        android:textSize="18dp"
-        app:layout_constraintBottom_toTopOf="@+id/openGalleryFrame"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.049"
-        app:layout_constraintStart_toStartOf="parent" />
+        <!-- AI Autofill Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/aiAutofillButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="?attr/colorSecondary"
+            android:text="Autofill with AI"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"
+            app:icon="@drawable/ic_ai_stars"
+            app:iconGravity="textStart"
+            app:iconPadding="12dp"
+            app:cornerRadius="20dp"
+            app:layout_constraintBottom_toTopOf="@+id/overviewSubmitButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:strokeWidth="0dp" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/overviewSubmitButton"
