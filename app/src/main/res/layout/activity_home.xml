@@ -29,6 +29,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:backgroundTint="?attr/colorSecondary"
+        android:contentDescription="@string/add_sighting"
         app:tint="?attr/colorOnSecondary"
         android:src="@drawable/icon_add"
         app:layout_anchor="@id/bottomNavView"

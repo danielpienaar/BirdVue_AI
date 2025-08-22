@@ -30,4 +30,5 @@
     <string name="email">Email</string>
     <string name="you_have_no_observations">You have no observations</string>
     <string name="there_are_no_posts_available">There are no posts available</string>
+    <string name="add_sighting">Add Sighting</string>
 </resources>
