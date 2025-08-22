@@ -10,6 +10,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -75,8 +77,18 @@ class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationBu
         //model.hotspotList.observe(viewLifecycleOwner, hotspotObserver)
 
         //Bottom drawer
-        val bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomNavigationContainer)
-        bottomSheetBehavior.peekHeight = 350
+        val bottomSheet = binding.bottomNavigationContainer  // your bottom sheet view
+        val bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet)
+
+        ViewCompat.setOnApplyWindowInsetsListener(bottomSheet) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val bottomInset = systemBars.bottom
+
+            // Set peekHeight plus bottom inset
+            bottomSheetBehavior.peekHeight = 350 + bottomInset
+
+            insets
+        }
 
         val supportMapFragment = childFragmentManager.findFragmentById(R.id.map_fragment) as SupportMapFragment
         supportMapFragment.getMapAsync(this)
