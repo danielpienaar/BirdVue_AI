@@ -18,8 +18,8 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.auth
+import com.google.firebase.Firebase
 import com.varsitycollege.birdvue.databinding.ActivityLoginBinding
 
 class LoginActivity : AppCompatActivity() {
