@@ -144,7 +144,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
             }
 
             override fun onError(status: com.google.android.gms.common.api.Status) {
-                Toast.makeText(this@AddSightingMapActivity, "Error: $status", Toast.LENGTH_SHORT).show()
+                //Toast.makeText(this@AddSightingMapActivity, "Error: $status", Toast.LENGTH_SHORT).show()
             }
         })
     }

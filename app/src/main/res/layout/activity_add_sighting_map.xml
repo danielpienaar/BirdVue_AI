@@ -57,13 +57,14 @@
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/map_fragment"
         android:name="com.google.android.gms.maps.SupportMapFragment"
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:paddingBottom="10dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@+id/datePicker1"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_default="percent"
+        app:layout_constraintHeight_percent="0.40"/>
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/autocomplete_fragment"
@@ -87,6 +88,8 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:hint="@string/details"
+        android:insetBottom="0dp"
+        android:insetTop="0dp"
         app:boxCornerRadiusBottomEnd="20dp"
         app:boxCornerRadiusBottomStart="20dp"
         app:boxCornerRadiusTopEnd="20dp"
@@ -102,7 +105,9 @@
             android:layout_width="match_parent"
             android:gravity="top"
             android:layout_height="100dp"
-            android:maxHeight="100dp" />
+            android:maxHeight="100dp"
+            android:insetBottom="0dp"
+            android:insetTop="0dp"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -111,6 +116,8 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:hint="@string/bird_name"
+        android:insetBottom="0dp"
+        android:insetTop="0dp"
         app:boxCornerRadiusBottomEnd="20dp"
         app:boxCornerRadiusBottomStart="20dp"
         app:boxCornerRadiusTopEnd="20dp"
@@ -126,33 +133,37 @@
             android:layout_height="wrap_content" />
     </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- AI Autofill Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/aiAutofillButton"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginBottom="16dp"
-            android:backgroundTint="?attr/colorSecondary"
-            android:text="Autofill with AI"
-            android:textSize="18sp"
-            android:textColor="@android:color/white"
-            app:icon="@drawable/ic_ai_stars"
-            app:iconGravity="textStart"
-            app:iconPadding="12dp"
-            app:cornerRadius="20dp"
-            app:layout_constraintBottom_toTopOf="@+id/overviewSubmitButton"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:strokeWidth="0dp" />
+    <!-- AI Autofill Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/aiAutofillButton"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="?attr/colorSecondary"
+        android:text="Autofill with AI"
+        android:textSize="18sp"
+        android:textColor="@android:color/white"
+        android:insetBottom="0dp"
+        android:insetTop="0dp"
+        app:icon="@drawable/ic_ai_stars"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        app:cornerRadius="20dp"
+        app:layout_constraintBottom_toTopOf="@+id/overviewSubmitButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:strokeWidth="0dp" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/overviewSubmitButton"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="50dp"
         android:layout_marginBottom="16dp"
         android:backgroundTint="?attr/colorSecondary"
         android:text="@string/submit"
         android:textSize="18dp"
+        android:insetBottom="0dp"
+        android:insetTop="0dp"
         app:cornerRadius="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

@@ -163,7 +163,7 @@ class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationBu
             }
 
             override fun onError(status: com.google.android.gms.common.api.Status) {
-                Toast.makeText(requireContext(), "Error: $status", Toast.LENGTH_SHORT).show()
+               // Toast.makeText(requireContext(), "Error: $status", Toast.LENGTH_SHORT).show()
             }
         })
     }
