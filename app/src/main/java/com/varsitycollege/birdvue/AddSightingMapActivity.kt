@@ -24,6 +24,7 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.core.view.View
@@ -74,6 +75,11 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
         }
 
         configureMap()
+        // Setup autocomplete
+        if (!com.google.android.libraries.places.api.Places.isInitialized()) {
+            com.google.android.libraries.places.api.Places.initialize(this, GOOGLE_MAPS_API_KEY)
+        }
+        setupAutocomplete()
 
         loadingIndicator = findViewById(R.id.loadingIndicator)
         overlayLayout = findViewById(R.id.overlayLayout)
@@ -113,6 +119,36 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
         }
 
     }
+
+    private fun setupAutocomplete() {
+        val autocompleteFragment = supportFragmentManager
+            .findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment
+
+        // Specify which fields you want returned
+        autocompleteFragment.setPlaceFields(listOf(
+            com.google.android.libraries.places.api.model.Place.Field.ID,
+            com.google.android.libraries.places.api.model.Place.Field.NAME,
+            com.google.android.libraries.places.api.model.Place.Field.LAT_LNG
+        ))
+
+        autocompleteFragment.setOnPlaceSelectedListener(object :
+            com.google.android.libraries.places.widget.listener.PlaceSelectionListener {
+            override fun onPlaceSelected(place: com.google.android.libraries.places.api.model.Place) {
+                // Move camera to selected location
+                place.latLng?.let { latLng ->
+                    selectedLocation = latLng  // Update the selected location
+                    googleMap?.clear()  // Remove previous markers
+                    googleMap?.addMarker(MarkerOptions().position(latLng).title(place.name))
+                    googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                }
+            }
+
+            override fun onError(status: com.google.android.gms.common.api.Status) {
+                Toast.makeText(this@AddSightingMapActivity, "Error: $status", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
 
     private fun configureMap() {
         val supportMapFragment =
@@ -347,4 +383,5 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     private fun hideLoadingOverlay() {
         overlayLayout.visibility = android.view.View.GONE
     }
+
 }

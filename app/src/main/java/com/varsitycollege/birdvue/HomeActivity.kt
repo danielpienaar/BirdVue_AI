@@ -44,6 +44,9 @@ class HomeActivity : AppCompatActivity() {
             insets
         }
 
+        // Force initial dispatch
+        ViewCompat.requestApplyInsets(binding.root)
+
         //Set startup fragment, keep current fragment if dark mode changes
         if (model.getCurrentFragment() != null) {
             replaceFragment(model.getCurrentFragment()!!)
