@@ -34,6 +34,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -45,6 +47,7 @@ import com.varsitycollege.birdvue.data.HomeViewModel
 import com.varsitycollege.birdvue.data.HotspotAdapter
 import com.varsitycollege.birdvue.data.Observation
 import java.text.DecimalFormat
+import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
 
 class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButtonClickListener  {
 
@@ -66,6 +69,10 @@ class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationBu
     ): View {
         // Inflate the layout for this fragment
         _binding = FragmentHotspotBinding.inflate(inflater, container, false)
+
+        if (!Places.isInitialized()) {
+            Places.initialize(requireContext(), GOOGLE_MAPS_API_KEY)
+        }
 
         //Observe viewModel
         //https://developer.android.com/topic/libraries/architecture/livedata
@@ -111,6 +118,57 @@ class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationBu
 
         return binding.root
     }
+
+    private fun setupAutocomplete() {
+        val autocompleteFragment = childFragmentManager
+            .findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment
+
+        autocompleteFragment.setPlaceFields(listOf(
+            com.google.android.libraries.places.api.model.Place.Field.ID,
+            com.google.android.libraries.places.api.model.Place.Field.NAME,
+            com.google.android.libraries.places.api.model.Place.Field.LAT_LNG
+        ))
+
+        autocompleteFragment.setOnPlaceSelectedListener(object :
+            com.google.android.libraries.places.widget.listener.PlaceSelectionListener {
+            override fun onPlaceSelected(place: com.google.android.libraries.places.api.model.Place) {
+                // Move camera to selected location
+                place.latLng?.let { latLng ->
+                    googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                    // Update your "userLocation" to this new place
+                    userLocation = latLng
+                    // Clear any previous hotspot data
+                    model.hotspotList.value = null
+                    googleMap?.clear()
+                    // Add a marker
+                    googleMap?.addMarker(
+                        MarkerOptions()
+                            .position(latLng)
+                            .title(place.name)
+                    )
+                    // Fetch new hotspots & observations for this location
+                    model.currentDistance.value?.let { distance ->
+                        fetchHotspots(distance)
+                        fetchObservations(distance)
+                    }
+                    // Update the distance text view if needed
+                    if (_binding != null) {
+                        if (model.metric.value == true) {
+                            binding.distanceTextView.text = "Showing hotspots within ${model.currentDistance.value} km"
+                        } else {
+                            binding.distanceTextView.text = "Showing hotspots within ${model.currentDistance.value} miles"
+                        }
+                    }
+                }
+            }
+
+            override fun onError(status: com.google.android.gms.common.api.Status) {
+                Toast.makeText(requireContext(), "Error: $status", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+
     private fun enableMyLocation() {
         if (ActivityCompat.checkSelfPermission(
                 requireContext(),
@@ -406,6 +464,11 @@ class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationBu
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupAutocomplete()
     }
 
 }
