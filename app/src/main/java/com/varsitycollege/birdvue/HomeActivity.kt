@@ -5,6 +5,9 @@ import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -29,6 +32,17 @@ class HomeActivity : AppCompatActivity() {
         //Initialize viewmodel and bottom nav view
         model = ViewModelProvider(this)[HomeViewModel::class.java]
         bottomNavigationView = binding.bottomNavView
+
+        //Fix layout for insets
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, 0) // push content away from bars
+            binding.fabAdd.translationY = -systemBars.bottom / 2f
+
+            insets
+        }
 
         //Set startup fragment, keep current fragment if dark mode changes
         if (model.getCurrentFragment() != null) {
