@@ -122,7 +122,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                             Log.d("Image URI", "$uri")
                             Toast.makeText(applicationContext, "Please specify a bird name", Toast.LENGTH_LONG).show()
                         } else {
-                            binding.overviewSubmitButton.isEnabled = false
                             showLoadingOverlay()
                             downloadStaticMap(uri)
                         }
@@ -233,7 +232,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                     val prediction = response.body()
                     if (prediction?.predictedClass != null) {
                         Toast.makeText(applicationContext, "Predicted: ${prediction.predictedClass}", Toast.LENGTH_LONG).show()
-                        Log.e("UploadImage", "Prediction successful: ${response.body()}")
+                        Log.i("UploadImage", "Prediction successful: ${response.body()}")
                         //hideLoadingOverlay()
                         // Now use this predicted_bird_name to call your fetchBirdInfoCoroutine
                         fetchBirdInfoCoroutine(prediction.predictedClass)
@@ -242,7 +241,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                         // If fetchBirdInfoCoroutine shows its own overlay, ensure they don't overlap awkwardly.
                     } else {
                         Toast.makeText(applicationContext, "AI could not identify the bird.", Toast.LENGTH_LONG).show()
-                        Log.e("UploadImage", "Prediction successful but no bird name in response: ${response.body()}")
+                        Log.w("UploadImage", "Prediction successful but no bird name in response: ${response.body()}")
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
@@ -482,7 +481,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                         //Upload observation after getting the download URL
                         submitObservation()
                         hideLoadingOverlay()
-                        loadingIndicator.visibility = android.view.View.GONE
                     } else {
                         // Image upload failed
                         Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show()
@@ -520,8 +518,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
             // link: https://www.geeksforgeeks.org/how-to-save-data-to-the-firebase-realtime-database-in-android/
             // accessed: 13 October 2023
             ref.child(key).setValue(observation).addOnSuccessListener {
-                binding.overviewSubmitButton.isEnabled = true
-
                 Toast.makeText(
                     applicationContext,
                     "Observation was added successfully.",
@@ -530,7 +526,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 //Go back to the home page
                 val intent = Intent(this, HomeActivity::class.java)
                 startActivity(intent)
-                loadingIndicator.visibility = android.view.View.GONE
                 hideLoadingOverlay()
             }.addOnFailureListener { e ->
                 Toast.makeText(
@@ -538,12 +533,10 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                     "Error: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
-                loadingIndicator.visibility = android.view.View.GONE
                 hideLoadingOverlay()
             }
         } catch (e: Exception) {
             Toast.makeText(applicationContext, e.localizedMessage, Toast.LENGTH_LONG).show()
-            loadingIndicator.visibility = android.view.View.GONE
             hideLoadingOverlay()
         }
     }
@@ -600,12 +593,14 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
         overlayLayout.visibility = android.view.View.VISIBLE
         loadingIndicator.visibility = android.view.View.VISIBLE
         binding.aiAutofillButton.isEnabled = false
+        binding.overviewSubmitButton.isEnabled = false
     }
 
     private fun hideLoadingOverlay() {
         overlayLayout.visibility = android.view.View.GONE
         loadingIndicator.visibility = android.view.View.INVISIBLE
         binding.aiAutofillButton.isEnabled = true
+        binding.overviewSubmitButton.isEnabled = true
     }
 
 }
