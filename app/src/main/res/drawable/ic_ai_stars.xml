@@ -5,10 +5,25 @@
     android:viewportHeight="24"
     android:tint="@android:color/white">
 
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M12,2l1.76,5.26h5.52l-4.47,3.25l1.7,5.24l-4.51,-3.28l-4.51,3.28l1.7,-5.24l-4.47,-3.25h5.52z"/>
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M5,14l1,3h3l-2.5,1.8l1,3L5,18l-2.5,1.8l1,-3L1,14h3z"/>
+    <group
+        android:scaleX="1.5"
+        android:scaleY="1.5"
+        android:pivotX="12"
+        android:pivotY="12">
+
+        <!-- Large central star -->
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M12,3 L13.5,8.5 L19,10 L13.5,11.5 L12,17 L10.5,11.5 L5,10 L10.5,8.5z"/>
+        <!-- Top-right sparkle -->
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M17,4 L17.8,6.5 L20,7 L17.8,7.5 L17,10 L16.2,7.5 L14,7 L16.2,6.5z"/>
+        <!-- Bottom-left sparkle -->
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M6,15 L6.8,17.5 L9,18 L6.8,18.5 L6,21 L5.2,18.5 L3,18 L5.2,17.5z"/>
+    </group>
 </vector>
+
+
