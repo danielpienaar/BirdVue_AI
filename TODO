@@ -1,0 +1,5 @@
+TODO:
+
+> check if fab jump issue fixed
+> require api key to access bird AI apis
+> implement api call to get bird data from image and autofill the add sighting fields
