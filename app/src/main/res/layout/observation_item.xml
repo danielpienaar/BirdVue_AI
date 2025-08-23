@@ -34,9 +34,11 @@
 
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="8dp"
             android:orientation="horizontal">
 
             <ImageView
@@ -46,24 +48,39 @@
                 android:layout_marginStart="16dp"
                 android:src="@drawable/icon" />
 
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
 
-            <TextView
-                android:id="@+id/birdNameField"
+
+                <TextView
+                    android:id="@+id/birdNameField"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/bird_name"
+                    android:textColor="?colorSecondary"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                android:id="@+id/usernameTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginStart="8dp"
-                android:text="@string/bird_name"
-                android:textColor="?colorSecondary"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="by Your Usernam" />
+
+            </LinearLayout>
         </LinearLayout>
         <TextView
             android:id="@+id/dateDisp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="53dp"
-            android:layout_marginTop="0dp"
+            android:layout_marginTop="2dp"
             android:textSize="12sp"
             android:layout_marginEnd="16dp"
             android:text="Date of post" />

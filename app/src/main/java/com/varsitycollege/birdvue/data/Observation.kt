@@ -11,6 +11,7 @@ data class Observation(
     val location: String ?= null,
     val likes: Int ?= null,
     val comments: List<Comment> ?= null,
-    val userId: String ?= null
+    val userId: String ?= null,
+    var userName: String ?= null
 )
 
