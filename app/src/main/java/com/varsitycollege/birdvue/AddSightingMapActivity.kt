@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Button
 import android.widget.ProgressBar
@@ -48,12 +49,17 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationButtonClickListener {
 
@@ -70,6 +76,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     private var downloadUrlMap: String? = null
     private val _birdInfo = MutableLiveData<BirdInfo>()
     val birdInfo: MutableLiveData<BirdInfo> = _birdInfo
+    private var selectedImageUriForAI: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,6 +114,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 // this callback is invoked after they choose an image or close the photo picker
                 //Set the image of the UI imageview
                 binding.openGalleryButton.setImageURI(uri)
+                selectedImageUriForAI = uri
                 //On submit, upload image then observation
                 binding.overviewSubmitButton.setOnClickListener {
                     if (uri != null) {
@@ -124,6 +132,17 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                         Log.d("PhotoPicker", "No media selected")
                     }
                 }
+
+                binding.aiAutofillButton.setOnClickListener {
+                    //TODO: use bird name returned from image identification, move to callback for after image picked
+                    if (uri != null) {
+                        uploadImageForPrediction(uri)
+//                        fetchBirdInfoCoroutine("Barn Owl")
+                    } else {
+                        Toast.makeText(applicationContext, "Please select a photo", Toast.LENGTH_LONG).show()
+                        Log.d("PhotoPicker", "No media selected")
+                    }
+                }
             }
 
         binding.openGalleryButton.setOnClickListener {
@@ -131,11 +150,117 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
-        binding.aiAutofillButton.setOnClickListener {
-            //TODO: use bird name returned from image identification, move to callback for after image picked
-            fetchBirdInfoCoroutine("Barn Owl")
-        }
+    }
 
+    private fun prepareFilePart(partName: String, fileUri: Uri): MultipartBody.Part? {
+        // ContentResolver to get details and stream data from the URI
+        val contentResolver = applicationContext.contentResolver
+        try {
+            // Get the file name. If it's null, use a generic name.
+            var fileName = "uploaded_image.jpg" // Default filename
+            contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+            }
+
+            // Get an InputStream from the URI
+            contentResolver.openInputStream(fileUri)?.use { inputStream ->
+                // Get the MIME type of the file
+                val mimeType = contentResolver.getType(fileUri) ?: "image/*"
+
+                // Create a RequestBody from the InputStream
+                // We need the content length for the RequestBody.
+                // One way to get it is to copy the stream to a temporary file or byte array.
+                // For simplicity here, if your server doesn't strictly require Content-Length for the part,
+                // you might get away with creating RequestBody directly from bytes if the image isn't too large.
+                // However, the robust way is to stream it.
+
+                val tempFile = File.createTempFile("upload", ".tmp", applicationContext.cacheDir)
+                FileOutputStream(tempFile).use { fos ->
+                    inputStream.copyTo(fos)
+                }
+                val requestFile = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+
+                // Create MultipartBody.Part using file name, request body
+                return MultipartBody.Part.createFormData(partName, fileName, requestFile)
+            }
+        } catch (e: Exception) {
+            Log.e("PrepareFilePart", "Error preparing file part: ${e.message}", e)
+            Toast.makeText(applicationContext, "Error preparing image for upload", Toast.LENGTH_SHORT).show()
+            return null
+        }
+        return null
+    }
+
+    private fun uploadImageForPrediction(imageUri: Uri) {
+        showLoadingOverlay() // Show loading indicator
+
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val imageFilePart = withContext(Dispatchers.IO) { // Perform file operations on IO thread
+                    prepareFilePart("file", imageUri)
+                }
+
+                if (imageFilePart == null) {
+                    Toast.makeText(applicationContext, "Could not prepare image for upload.", Toast.LENGTH_LONG).show()
+                    hideLoadingOverlay()
+                    return@launch
+                }
+
+                val predictUrl = "https://sveiaufbgb.eu-west-1.awsapprunner.com/predict"
+                Log.d("UploadImage", "Uploading to: $predictUrl with file part: ${imageFilePart.headers}")
+
+                val okHttpClient = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS) // time allowed to establish connection
+                    .readTimeout(30, TimeUnit.SECONDS)    // time allowed for server to send response
+                    .writeTimeout(30, TimeUnit.SECONDS)   // time allowed to send request body
+                    .build()
+                //Call eBird api to fetch hotspot data
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                    .client(okHttpClient)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val api = retrofit.create(BirdInfoAPI::class.java)
+
+                val response = api.predictImage(predictUrl, imageFilePart)
+
+                if (response.isSuccessful) {
+                    val prediction = response.body()
+                    if (prediction?.predictedClass != null) {
+                        Toast.makeText(applicationContext, "Predicted: ${prediction.predictedClass}", Toast.LENGTH_LONG).show()
+                        Log.e("UploadImage", "Prediction successful: ${response.body()}")
+                        //hideLoadingOverlay()
+                        // Now use this predicted_bird_name to call your fetchBirdInfoCoroutine
+                        fetchBirdInfoCoroutine(prediction.predictedClass)
+                        // The fetchBirdInfoCoroutine will handle its own loading overlay,
+                        // so we can hide the current one if it's separate.
+                        // If fetchBirdInfoCoroutine shows its own overlay, ensure they don't overlap awkwardly.
+                    } else {
+                        Toast.makeText(applicationContext, "AI could not identify the bird.", Toast.LENGTH_LONG).show()
+                        Log.e("UploadImage", "Prediction successful but no bird name in response: ${response.body()}")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Toast.makeText(applicationContext, "AI prediction failed: ${response.code()}", Toast.LENGTH_LONG).show()
+                    Log.e("UploadImage", "API Error: ${response.code()} - ${response.message()}. Body: $errorBody")
+                }
+            } catch (e: Exception) {
+                Toast.makeText(applicationContext, "Error during AI prediction: ${e.message}", Toast.LENGTH_LONG).show()
+                Log.e("UploadImage", "Exception: ${e.message}", e)
+            } finally {
+                // If fetchBirdInfoCoroutine has its own overlay logic, this might be handled there.
+                // Otherwise, ensure the overlay is hidden appropriately.
+                // For now, let's assume fetchBirdInfoCoroutine will manage the overlay state from this point.
+                // If not, uncomment hideLoadingOverlay() and re-enable the button.
+                hideLoadingOverlay()
+            }
+        }
     }
 
     private val birdDao: BirdCacheDao by lazy {
@@ -145,7 +270,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     private fun fetchBirdInfoCoroutine(birdName: String) {
         Toast.makeText(applicationContext, "Fetching bird info", Toast.LENGTH_SHORT).show()
         //loading indicator here
-        showLoadingOverlay()
+//        showLoadingOverlay()
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
@@ -474,10 +599,12 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     }
     private fun showLoadingOverlay() {
         overlayLayout.visibility = android.view.View.VISIBLE
+        binding.aiAutofillButton.isEnabled = false
     }
 
     private fun hideLoadingOverlay() {
         overlayLayout.visibility = android.view.View.GONE
+        binding.aiAutofillButton.isEnabled = true
     }
 
 }
