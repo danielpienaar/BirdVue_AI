@@ -4,30 +4,54 @@ import android.content.Intent
 import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
+import androidx.activity.result.launch
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.work.PeriodicWorkRequestBuilder
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.varsitycollege.birdvue.data.BirdInfoDatabase
 import com.varsitycollege.birdvue.data.HomeViewModel
 import com.varsitycollege.birdvue.databinding.ActivityHomeBinding
 import com.varsitycollege.birdvue.ui.CommunityFragment
 import com.varsitycollege.birdvue.ui.HotspotFragment
 import com.varsitycollege.birdvue.ui.ObservationsFragment
 import com.varsitycollege.birdvue.ui.SettingsFragment
+import com.varsitycollege.birdvue.workers.ClearCacheWorker
+import java.util.concurrent.TimeUnit
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private lateinit var bottomNavigationView: BottomNavigationView
     private lateinit var model: HomeViewModel
 
+    private fun setupPeriodicCacheClear() {
+        val clearCacheRequest = PeriodicWorkRequestBuilder<ClearCacheWorker>(
+            BirdInfoDatabase.CACHE_EXPIRY_DAYS.toLong(), // Use the constant from your DB
+            TimeUnit.DAYS
+        )
+            // .setConstraints(Constraints.Builder().setRequiresCharging(true).build()) // Optional: Add constraints
+            .build()
+
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "clearBirdCacheWork",                 // Unique name for the work
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,      // Or .REPLACE if you need to update parameters
+            clearCacheRequest
+        )
+        Log.d("BirdVue_AI", "Periodic cache clear worker scheduled.")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        setupPeriodicCacheClear()
 
         //Initialize viewmodel and bottom nav view
         model = ViewModelProvider(this)[HomeViewModel::class.java]
