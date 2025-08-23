@@ -124,7 +124,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                         } else {
                             binding.overviewSubmitButton.isEnabled = false
                             showLoadingOverlay()
-                            loadingIndicator.visibility = android.view.View.VISIBLE
                             downloadStaticMap(uri)
                         }
                     } else {
@@ -270,7 +269,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     private fun fetchBirdInfoCoroutine(birdName: String) {
         Toast.makeText(applicationContext, "Fetching bird info", Toast.LENGTH_SHORT).show()
         //loading indicator here
-//        showLoadingOverlay()
+         showLoadingOverlay()
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
@@ -599,11 +598,13 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     }
     private fun showLoadingOverlay() {
         overlayLayout.visibility = android.view.View.VISIBLE
+        loadingIndicator.visibility = android.view.View.VISIBLE
         binding.aiAutofillButton.isEnabled = false
     }
 
     private fun hideLoadingOverlay() {
         overlayLayout.visibility = android.view.View.GONE
+        loadingIndicator.visibility = android.view.View.INVISIBLE
         binding.aiAutofillButton.isEnabled = true
     }
 
