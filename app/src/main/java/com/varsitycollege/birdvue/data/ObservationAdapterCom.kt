@@ -19,6 +19,7 @@ class ObservationAdapterCom (private val posts: List<Observation>) : RecyclerVie
         //val postImage: ImageView = itemView.findViewById(R.id.postImage)
         val profilePicture: ImageView = itemView.findViewById(R.id.profilePicture)
         val birdNameField: TextView = itemView.findViewById(R.id.birdNameField)
+        val usernameTextView: TextView = itemView.findViewById(R.id.usernameTextView)
         val date: TextView = itemView.findViewById(R.id.dateDisp)
         val caption: TextView = itemView.findViewById(R.id.caption)
         val likeButton: Button = itemView.findViewById(R.id.likeButton)
@@ -40,6 +41,7 @@ class ObservationAdapterCom (private val posts: List<Observation>) : RecyclerVie
         //holder.postImage.setImageResource(post.imageResId)
         //holder.profilePicture.setImageResource(post.profilePictureResId)
         holder.birdNameField.text = post.birdName
+        holder.usernameTextView.text = post.userName
         holder.caption.text = post.details
         holder.date.text = post.date
         // Set click listeners for buttons (like, comment)

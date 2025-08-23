@@ -1,21 +1,16 @@
 package com.varsitycollege.birdvue.data
 
-import android.content.Intent
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -34,6 +29,7 @@ class ObservationAdapter (private val posts: List<Observation>) : RecyclerView.A
         //val postImage: ImageView = itemView.findViewById(R.id.postImage)
         val profilePicture: ImageView = itemView.findViewById(R.id.profilePicture)
         val birdNameField: TextView = itemView.findViewById(R.id.birdNameField)
+        val usernameTextView: TextView = itemView.findViewById(R.id.usernameTextView)
         val date: TextView = itemView.findViewById(R.id.dateDisp)
         val caption: TextView = itemView.findViewById(R.id.caption)
         val likeButton: Button = itemView.findViewById(R.id.likeButton)
@@ -54,6 +50,7 @@ class ObservationAdapter (private val posts: List<Observation>) : RecyclerView.A
         holder.date.text = post.date
         holder.birdNameField.text = post.birdName
         holder.caption.text = post.details
+        holder.usernameTextView.text = post.userName ?: "Me"
 
         //Set click listeners for buttons (like, comment, delete)
         holder.likeButton.setOnClickListener {
