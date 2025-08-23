@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
     id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
+    id 'com.google.devtools.ksp'
 }
 
 android {
@@ -31,12 +32,6 @@ android {
         }
     }
 
-    buildscript {
-        repositories {
-            mavenCentral()
-        }
-    }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -44,6 +39,10 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
+    }
+
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 
@@ -71,5 +70,15 @@ dependencies {
     //https://github.com/bumptech/glide
     //[Accessed 09 November 2023]
     implementation 'com.github.bumptech.glide:glide:4.16.0'
+
+    implementation "androidx.room:room-runtime:2.7.2"
+    annotationProcessor "androidx.room:room-compiler:2.7.2" // For Java
+    ksp "androidx.room:room-compiler:2.7.2" // For Kotlin (use ksp instead of kapt)
+    // Kotlin Extensions and Coroutines support for Room
+    implementation "androidx.room:room-ktx:2.7.2"
+    // Optional - Paging 3 Integration
+    implementation "androidx.room:room-paging:2.7.2"
+
+    implementation "androidx.work:work-runtime-ktx:2.10.3"
 
 }

@@ -33,9 +33,13 @@ import com.google.firebase.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
+import com.varsitycollege.birdvue.BuildConfig.BIRD_INFO_AI_API_KEY
 import com.varsitycollege.birdvue.api.BirdInfoAPI
 import com.varsitycollege.birdvue.api.EBirdAPI
+import com.varsitycollege.birdvue.data.BirdCacheDao
+import com.varsitycollege.birdvue.data.BirdCacheEntry
 import com.varsitycollege.birdvue.data.BirdInfo
+import com.varsitycollege.birdvue.data.BirdInfoDatabase
 import com.varsitycollege.birdvue.data.Observation
 import com.varsitycollege.birdvue.databinding.ActivityAddSightingMapBinding
 import kotlinx.coroutines.CoroutineScope
@@ -133,29 +137,79 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
 
     }
 
+    private val birdDao: BirdCacheDao by lazy {
+        BirdInfoDatabase.getDatabase(applicationContext).birdCacheDao()
+    }
+
     private fun fetchBirdInfoCoroutine(birdName: String) {
         Toast.makeText(applicationContext, "Fetching bird info", Toast.LENGTH_SHORT).show()
+        //TODO: Add loading indicator here
+
         CoroutineScope(Dispatchers.Main).launch {
-            //Call eBird api to fetch hotspot data
-            val retrofit = Retrofit.Builder()
-                .baseUrl("https://3hkbc9xpzr.eu-west-1.awsapprunner.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-
-            val api = retrofit.create(BirdInfoAPI::class.java)
-
-            val response = api.getBirdInfo(birdName)
-            if (response.isSuccessful) {
-                val birdInfo = response.body()
-                if (birdInfo != null) {
-                    _birdInfo.postValue(birdInfo)
-                    binding.birdNameFieldEditText.setText(birdInfo.prompt)
-                    binding.detailsFieldEditText.setText(birdInfo.answer)
-                    Log.d("BirdInfoAPI", "Bird info fetched successfully: ${response.body()?: "null"}")
+            try {
+                // 1. Check cache first
+                val cachedBird = withContext(Dispatchers.IO) { // Perform DB operations on IO dispatcher
+                    birdDao.getBirdByName(birdName)
                 }
-            } else {
-                Log.e("BirdInfoAPI", "Error: ${response.code()}")
+
+                val threeDaysInMillis = 3 * 24 * 60 * 60 * 1000L
+                val isCacheStale = cachedBird?.let { (System.currentTimeMillis() - it.timestamp) > threeDaysInMillis } ?: true
+
+                if (cachedBird != null && !isCacheStale) {
+                    Toast.makeText(applicationContext, "Fetched from cache: $birdName", Toast.LENGTH_SHORT).show()
+                    // Update UI with cached data
+                    _birdInfo.postValue(BirdInfo(
+                        prompt = cachedBird.birdName,
+                        answer = cachedBird.description
+                    ))
+                    binding.birdNameFieldEditText.setText(cachedBird.birdName)
+                    binding.detailsFieldEditText.setText(cachedBird.description)
+                    Log.d("BirdInfoCache", "Bird info fetched from cache: ${cachedBird.birdName}")
+                } else {
+                    Toast.makeText(applicationContext, "Fetching from API: $birdName", Toast.LENGTH_SHORT).show()
+                    //Call eBird api to fetch hotspot data
+                    val retrofit = Retrofit.Builder()
+                        .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build()
+
+                    val api = retrofit.create(BirdInfoAPI::class.java)
+
+                    val response = api.getBirdInfo(birdName, BIRD_INFO_AI_API_KEY)
+                    if (response.isSuccessful) {
+                        val birdInfo = response.body()
+                        if (birdInfo != null && birdInfo.prompt != null && birdInfo.answer != null) {
+                            _birdInfo.postValue(birdInfo)
+                            binding.birdNameFieldEditText.setText(birdInfo.prompt)
+                            binding.detailsFieldEditText.setText(birdInfo.answer)
+                            Log.d("BirdInfoAPI", "Bird info fetched successfully: ${response.body()?: "null"}")
+
+                            // 3. Save to cache
+                            val newCacheEntry = BirdCacheEntry(
+                                birdName = birdInfo.prompt,
+                                description = birdInfo.answer,
+                                timestamp = System.currentTimeMillis()
+                            )
+                            withContext(Dispatchers.IO) {
+                                BirdInfoDatabase.insertAndManageCache(applicationContext, newCacheEntry)
+                            }
+                        } else {
+                            Log.e("BirdInfoAPI", "API response body or details are null.")
+                            Toast.makeText(applicationContext, "Could not fetch details for $birdName", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Log.e("BirdInfoAPI", "API Error: ${response.code()}")
+                        Toast.makeText(applicationContext, "Could not fetch details for $birdName", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("BirdInfoCoroutine", "Error fetching bird info for $birdName: ${e.message}", e)
+                Toast.makeText(applicationContext, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                //TODO: Maybe hide loading indicator here
             }
+
         }
     }
 
