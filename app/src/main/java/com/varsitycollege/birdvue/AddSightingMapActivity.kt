@@ -256,7 +256,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 // Otherwise, ensure the overlay is hidden appropriately.
                 // For now, let's assume fetchBirdInfoCoroutine will manage the overlay state from this point.
                 // If not, uncomment hideLoadingOverlay() and re-enable the button.
-                hideLoadingOverlay()
+                //hideLoadingOverlay()
             }
         }
     }
