@@ -17,6 +17,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.MutableLiveData
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -32,6 +33,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
+import com.varsitycollege.birdvue.api.BirdInfoAPI
+import com.varsitycollege.birdvue.api.EBirdAPI
+import com.varsitycollege.birdvue.data.BirdInfo
 import com.varsitycollege.birdvue.data.Observation
 import com.varsitycollege.birdvue.databinding.ActivityAddSightingMapBinding
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +44,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -58,6 +64,8 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     private lateinit var loadingIndicator: ProgressBar
     private var downloadUrl: String? = null
     private var downloadUrlMap: String? = null
+    private val _birdInfo = MutableLiveData<BirdInfo>()
+    val birdInfo: MutableLiveData<BirdInfo> = _birdInfo
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,6 +126,37 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
+        binding.aiAutofillButton.setOnClickListener {
+            //TODO: use bird name returned from image identification, move to callback for after image picked
+            fetchBirdInfoCoroutine("Robin")
+        }
+
+    }
+
+    private fun fetchBirdInfoCoroutine(birdName: String) {
+        Toast.makeText(applicationContext, "Fetching bird info", Toast.LENGTH_SHORT).show()
+        CoroutineScope(Dispatchers.Main).launch {
+            //Call eBird api to fetch hotspot data
+            val retrofit = Retrofit.Builder()
+                .baseUrl("https://3hkbc9xpzr.eu-west-1.awsapprunner.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+
+            val api = retrofit.create(BirdInfoAPI::class.java)
+
+            val response = api.getBirdInfo(birdName)
+            if (response.isSuccessful) {
+                val birdInfo = response.body()
+                if (birdInfo != null) {
+                    _birdInfo.postValue(birdInfo)
+                    binding.birdNameFieldEditText.setText(birdInfo.prompt)
+                    binding.detailsFieldEditText.setText(birdInfo.answer)
+                    Log.d("BirdInfoAPI", "Bird info fetched successfully: ${response.body()?: "null"}")
+                }
+            } else {
+                Log.e("BirdInfoAPI", "Error: ${response.code()}")
+            }
+        }
     }
 
     private fun setupAutocomplete() {
