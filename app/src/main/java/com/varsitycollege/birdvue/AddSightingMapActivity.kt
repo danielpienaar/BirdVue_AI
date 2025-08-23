@@ -111,6 +111,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 binding.overviewSubmitButton.setOnClickListener {
                     if (uri != null) {
                         if (binding.birdNameFieldEditText.text.toString().isBlank()) {
+                            Log.d("Image URI", "$uri")
                             Toast.makeText(applicationContext, "Please specify a bird name", Toast.LENGTH_LONG).show()
                         } else {
                             binding.overviewSubmitButton.isEnabled = false
@@ -132,7 +133,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
 
         binding.aiAutofillButton.setOnClickListener {
             //TODO: use bird name returned from image identification, move to callback for after image picked
-            fetchBirdInfoCoroutine("Robin")
+            fetchBirdInfoCoroutine("Barn Owl")
         }
 
     }
@@ -143,7 +144,8 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
 
     private fun fetchBirdInfoCoroutine(birdName: String) {
         Toast.makeText(applicationContext, "Fetching bird info", Toast.LENGTH_SHORT).show()
-        //TODO: Add loading indicator here
+        //loading indicator here
+        showLoadingOverlay()
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
@@ -207,7 +209,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 Log.e("BirdInfoCoroutine", "Error fetching bird info for $birdName: ${e.message}", e)
                 Toast.makeText(applicationContext, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             } finally {
-                //TODO: Maybe hide loading indicator here
+                hideLoadingOverlay()
             }
 
         }
@@ -467,6 +469,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
             uploadStaticMapImage(apiKey, center, zoom, size, scale, format)
             }
             uploadImage(imageUri)
+            Log.d("Image URI", "$imageUri")
         }
     }
     private fun showLoadingOverlay() {
