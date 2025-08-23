@@ -77,6 +77,8 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
     private val _birdInfo = MutableLiveData<BirdInfo>()
     val birdInfo: MutableLiveData<BirdInfo> = _birdInfo
     private var selectedImageUriForAI: Uri? = null
+    private val VERIFY_IMAGE_URL = "https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/verifybirdimage"
+    private val PREDICT_SPECIES_URL = "https://sveiaufbgb.eu-west-1.awsapprunner.com/predict"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,8 +136,9 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 binding.aiAutofillButton.setOnClickListener {
                     //TODO: use bird name returned from image identification, move to callback for after image picked
                     if (uri != null) {
-                        uploadImageForPrediction(uri)
-//                        fetchBirdInfoCoroutine("Barn Owl")
+                        checkIfBird(uri)
+                        //uploadImageForPrediction(uri)
+                        //fetchBirdInfoCoroutine("Barn Owl")
                     } else {
                         Toast.makeText(applicationContext, "Please select a photo", Toast.LENGTH_LONG).show()
                         Log.d("PhotoPicker", "No media selected")
@@ -148,6 +151,58 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
+    }
+
+    private fun checkIfBird(imageUri: Uri) {
+        showLoadingOverlay()
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // Step 1: Verify if the image is a bird
+                val imageFilePartForVerification = withContext(Dispatchers.IO) {
+                    prepareFilePart("file", imageUri)
+                }
+
+                if (imageFilePartForVerification == null) {
+                    Toast.makeText(applicationContext, "Could not prepare image for verification.", Toast.LENGTH_LONG).show()
+                    hideLoadingOverlay()
+                    return@launch
+                }
+
+                Log.d("AIProcess", "Step 1: Verifying image content at $VERIFY_IMAGE_URL")
+
+                val okHttpClient = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS) // time allowed to establish connection
+                    .readTimeout(30, TimeUnit.SECONDS)    // time allowed for server to send response
+                    .writeTimeout(30, TimeUnit.SECONDS)   // time allowed to send request body
+                    .build()
+                //Call eBird api to fetch hotspot data
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                    .client(okHttpClient)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val api = retrofit.create(BirdInfoAPI::class.java)
+
+                val verificationResponse = api.verifyBirdImage(VERIFY_IMAGE_URL, imageFilePartForVerification, BIRD_INFO_AI_API_KEY)
+                if (verificationResponse.isSuccessful && verificationResponse.body()?.isOk == true) {
+                    Log.d("AIProcess", "Step 1 SUCCESS: Image verified as a bird. Label: ${verificationResponse.body()?.label}, Confidence: ${verificationResponse.body()?.confidence}")
+                    Toast.makeText(applicationContext, "Image verified as a bird. Label: ${verificationResponse.body()?.label}, Confidence: ${verificationResponse.body()?.confidence}", Toast.LENGTH_SHORT).show()
+                    hideLoadingOverlay()
+                } else {
+                    val errorMsg = verificationResponse.body()?.message ?: "Image is not a bird or verification failed."
+                    val responseCode = verificationResponse.code()
+                    val errorBody = if (!verificationResponse.isSuccessful) verificationResponse.errorBody()?.string() else ""
+                    Log.e("AIProcess", "Step 1 FAILED: Image not a bird or API error. Code: $responseCode. Message: $errorMsg. ErrorBody: $errorBody")
+                    Toast.makeText(applicationContext, errorMsg, Toast.LENGTH_LONG).show()
+                    hideLoadingOverlay()
+                }
+            } catch (e: Exception) {
+                Log.e("AIProcess", "Exception during AI content moderation: ${e.message}", e)
+                Toast.makeText(applicationContext, "An error occurred: ${e.message}", Toast.LENGTH_LONG).show()
+                hideLoadingOverlay()
+            }
+        }
     }
 
     private fun prepareFilePart(partName: String, fileUri: Uri): MultipartBody.Part? {
@@ -209,8 +264,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                     return@launch
                 }
 
-                val predictUrl = "https://sveiaufbgb.eu-west-1.awsapprunner.com/predict"
-                Log.d("UploadImage", "Uploading to: $predictUrl with file part: ${imageFilePart.headers}")
+                Log.d("UploadImage", "Uploading to: $PREDICT_SPECIES_URL with file part: ${imageFilePart.headers}")
 
                 val okHttpClient = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS) // time allowed to establish connection
@@ -226,7 +280,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
 
                 val api = retrofit.create(BirdInfoAPI::class.java)
 
-                val response = api.predictImage(predictUrl, imageFilePart)
+                val response = api.predictImage(PREDICT_SPECIES_URL, imageFilePart, BIRD_INFO_AI_API_KEY)
 
                 if (response.isSuccessful) {
                     val prediction = response.body()

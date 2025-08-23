@@ -24,8 +24,15 @@ interface BirdInfoAPI {
     @POST
     suspend fun predictImage(
         @Url url: String, // Pass the full URL: "https://sveiaufbgb.eu-west-1.awsapprunner.com/predict"
-        @Part file: MultipartBody.Part // The image file part
-        // If your API requires other parts (like an API key in the form data), add them as @Part as well
-        // @Part("api_key") apiKey: RequestBody
+        @Part file: MultipartBody.Part, // The image file part
+        @Header("x-api-key") apiKey: String
     ): Response<ImagePredictionResponse>
+
+    @Multipart
+    @POST
+    suspend fun verifyBirdImage(
+        @Url url: String, // Full URL: "https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/verifybirdimage"
+        @Part file: MultipartBody.Part, // The image file part
+        @Header("x-api-key") apiKey: String
+    ): Response<VerifyBirdImageResponse>
 }
