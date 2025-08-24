@@ -114,6 +114,14 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback,
         ensurePlacesInitialized()
         setupAutocomplete()
 
+        binding.overviewSubmitButton.setOnClickListener {
+            toast("Please select a photo")
+        }
+
+        binding.aiAutofillButton.setOnClickListener {
+            toast("Please select a photo")
+        }
+
         val pickMedia =
             registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
                 // user picked or dismissed
