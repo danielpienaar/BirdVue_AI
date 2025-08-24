@@ -30,5 +30,7 @@
         <item name="android:statusBarColor">@color/md_theme_dark_primary</item>
         <!-- Observation card background -->
         <item name="android:colorPrimaryDark">#2b2b2b</item>
+        <item name="colorAi">@color/md_theme_dark_AI</item>
+        <item name="colorOnAi">@color/md_theme_dark_on_AI</item>
     </style>
 </resources>
