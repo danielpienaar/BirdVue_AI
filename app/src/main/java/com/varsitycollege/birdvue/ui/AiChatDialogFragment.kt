@@ -93,7 +93,7 @@ class AiChatDialogFragment : DialogFragment() {
     // This might be constructed using Bot ID, Alias, Locale from constants or config
     // Example: "https://runtime-v2-lex.us-east-1.amazonaws.com/bots/YOUR_BOT_ID/botAliases/YOUR_BOT_ALIAS_ID/botLocales/en_US/text"
     // OR your API Gateway URL that proxies to Lex
-    private val LEX_ENDPOINT_URL = "YOUR_API_GATEWAY_LEX_PROXY_URL_OR_LEX_ENDPOINT"
+    private val LEX_ENDPOINT_URL = "https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/lex/text/"
 
 
     // TODO: Initialize your BirdInfoAPI service (Retrofit)
@@ -222,7 +222,12 @@ class AiChatDialogFragment : DialogFragment() {
                     return@launch
                 }
 
-                val response = birdInfoApiService.postTextToLex(LEX_ENDPOINT_URL, lexRequest)
+                val sessionId = "birdvue-${UUID.randomUUID()}"
+
+                val response = birdInfoApiService.postTextToLex(
+                    LEX_ENDPOINT_URL + sessionId,
+                    lexRequest
+                )
 
                 if (response.isSuccessful && response.body() != null) {
                     val lexResponse = response.body()!!
@@ -238,6 +243,7 @@ class AiChatDialogFragment : DialogFragment() {
 
                     if (lexResponse.messages.isNullOrEmpty()) {
                         addAiResponseMessage("I received a response, but it was empty.")
+                        Log.w("AiChatDialog", "Lex response was empty: $lexResponse")
                     }
 
                 } else {
