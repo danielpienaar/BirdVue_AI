@@ -33,6 +33,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.varsitycollege.birdvue.BuildConfig
 import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
+import com.varsitycollege.birdvue.BuildConfig.EBIRD_API_BASE_URL
 import com.varsitycollege.birdvue.R
 import com.varsitycollege.birdvue.api.EBirdAPI
 import com.varsitycollege.birdvue.data.HomeViewModel
@@ -388,7 +389,7 @@ class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationBu
         //Toast.makeText(this@HotspotFragment.requireActivity().applicationContext, "Getting data from API", Toast.LENGTH_LONG).show()
         //Call eBird api to fetch hotspot data
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://api.ebird.org/v2/")
+            .baseUrl(EBIRD_API_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 

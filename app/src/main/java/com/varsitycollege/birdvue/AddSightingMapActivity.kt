@@ -34,6 +34,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
 import com.varsitycollege.birdvue.BuildConfig.BIRD_INFO_AI_API_KEY
 import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
+import com.varsitycollege.birdvue.BuildConfig.BIRD_REST_API_STAGE_BASE_URL
 import com.varsitycollege.birdvue.api.BirdInfoAPI
 import com.varsitycollege.birdvue.data.BirdCacheDao
 import com.varsitycollege.birdvue.data.BirdCacheEntry
@@ -185,7 +186,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback,
                 .build()
 
             val retrofit = Retrofit.Builder()
-                .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                .baseUrl(BIRD_REST_API_STAGE_BASE_URL)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
@@ -249,7 +250,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback,
                     .build()
 
                 val retrofit = Retrofit.Builder()
-                    .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                    .baseUrl(BIRD_REST_API_STAGE_BASE_URL)
                     .client(okHttpClient)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build()
@@ -296,7 +297,7 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback,
                     Log.d("BirdInfoCache", "From cache: ${cached.birdName}")
                 } else {
                     val retrofit = Retrofit.Builder()
-                        .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                        .baseUrl(BIRD_REST_API_STAGE_BASE_URL)
                         .addConverterFactory(GsonConverterFactory.create())
                         .build()
 

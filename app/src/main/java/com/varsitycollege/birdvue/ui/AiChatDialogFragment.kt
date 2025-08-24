@@ -19,6 +19,7 @@ import com.varsitycollege.birdvue.data.ChatMessage
 import com.varsitycollege.birdvue.data.Observation
 import com.varsitycollege.birdvue.data.SenderType
 import com.varsitycollege.birdvue.databinding.DialogAiChatBinding
+import com.varsitycollege.birdvue.BuildConfig.BIRD_REST_API_STAGE_BASE_URL
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.HttpException
@@ -104,7 +105,7 @@ class AiChatDialogFragment : DialogFragment() {
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+            .baseUrl(BIRD_REST_API_STAGE_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
