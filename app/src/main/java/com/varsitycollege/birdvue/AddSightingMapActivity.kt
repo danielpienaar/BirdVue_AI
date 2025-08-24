@@ -187,10 +187,10 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                 val response = api.verifyBirdImage(VERIFY_IMAGE_URL, imageFilePart, BIRD_INFO_AI_API_KEY)
 
                 if (response.isSuccessful && response.body()?.isOk == true) {
-                    Log.d("AIProcess", "Verified as bird: ${response.body()?.label}")
+                    Log.d("AIProcess", "Verified as bird: ${response.body()}")
                     true
                 } else {
-                    Log.w("AIProcess", "Not a bird or API error: ${response.code()}")
+                    Log.w("AIProcess", "Not a bird or API error: ${response.code()}, Body: ${response.body()}")
                     false
                 }
             } catch (e: Exception) {

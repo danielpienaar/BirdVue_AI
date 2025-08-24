@@ -1,5 +1,6 @@
 package com.varsitycollege.birdvue.data
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
 import com.varsitycollege.birdvue.R
+import com.varsitycollege.birdvue.ui.AiChatDialogFragment
 
 class ObservationAdapterCom (private val posts: List<Observation>) : RecyclerView.Adapter<ObservationAdapterCom.PostViewHolder>() {
     inner class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -23,7 +25,7 @@ class ObservationAdapterCom (private val posts: List<Observation>) : RecyclerVie
         val date: TextView = itemView.findViewById(R.id.dateDisp)
         val caption: TextView = itemView.findViewById(R.id.caption)
         val likeButton: Button = itemView.findViewById(R.id.likeButton)
-        val commentButton: Button = itemView.findViewById(R.id.commentButton)
+        val aiChatButton: Button = itemView.findViewById(R.id.aiChatButton)
         val viewPager: ViewPager2 = itemView.findViewById(R.id.viewPager)
 
 
@@ -49,8 +51,17 @@ class ObservationAdapterCom (private val posts: List<Observation>) : RecyclerVie
             // Handle like button click
         }
 
-        holder.commentButton.setOnClickListener {
-            // Handle comment button click
+        //TODO: FIX
+        // In your ObservationAdapter (e.g., in onBindViewHolder)
+        holder.aiChatButton.setOnClickListener {
+            // Use the 'post' object directly here, as it's the observation for this item
+            val fragmentManager = (holder.itemView.context as? androidx.fragment.app.FragmentActivity)?.supportFragmentManager
+            if (fragmentManager != null) {
+                // Ensure your 'Observation' data class (which 'post' is an instance of) is Parcelable
+                AiChatDialogFragment.newInstance(post).show(fragmentManager, AiChatDialogFragment.TAG)
+            } else {
+                Log.e("ObservationAdapter", "Cannot get FragmentManager for AI Chat Dialog")
+            }
         }
 
         val imageUrls = listOf(post.photo, post.location)

@@ -1,5 +1,9 @@
 package com.varsitycollege.birdvue.data
 
+import android.os.Parcelable // Import Parcelable
+import kotlinx.parcelize.Parcelize // Import Parcelize
+
+@Parcelize
 data class Observation(
     val id: String ?= null,
     val birdName: String ?= null,
@@ -13,5 +17,5 @@ data class Observation(
     val comments: List<Comment> ?= null,
     val userId: String ?= null,
     var userName: String ?= null
-)
+) : Parcelable
 
