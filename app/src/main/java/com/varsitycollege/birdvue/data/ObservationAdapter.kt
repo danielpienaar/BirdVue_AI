@@ -20,6 +20,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.varsitycollege.birdvue.LoginActivity
 import com.varsitycollege.birdvue.R
+import com.varsitycollege.birdvue.ui.AiChatDialogFragment
 
 class ObservationAdapter (private val posts: List<Observation>) : RecyclerView.Adapter<ObservationAdapter.PostViewHolder>() {
 
@@ -33,7 +34,7 @@ class ObservationAdapter (private val posts: List<Observation>) : RecyclerView.A
         val date: TextView = itemView.findViewById(R.id.dateDisp)
         val caption: TextView = itemView.findViewById(R.id.caption)
         val likeButton: Button = itemView.findViewById(R.id.likeButton)
-        val commentButton: Button = itemView.findViewById(R.id.commentButton)
+        val aiChatButton: Button = itemView.findViewById(R.id.aiChatButton)
         val deleteButton: Button = itemView.findViewById(R.id.deleteObservation)
         val viewPager: ViewPager2 = itemView.findViewById(R.id.viewPager)
 
@@ -57,8 +58,17 @@ class ObservationAdapter (private val posts: List<Observation>) : RecyclerView.A
             //Handle like button click
         }
 
-        holder.commentButton.setOnClickListener {
-            //Handle comment button click
+        //TODO: FIX
+        // In your ObservationAdapter (e.g., in onBindViewHolder)
+        holder.aiChatButton.setOnClickListener {
+            // Use the 'post' object directly here, as it's the observation for this item
+            val fragmentManager = (holder.itemView.context as? androidx.fragment.app.FragmentActivity)?.supportFragmentManager
+            if (fragmentManager != null) {
+                // Ensure your 'Observation' data class (which 'post' is an instance of) is Parcelable
+                AiChatDialogFragment.newInstance(post).show(fragmentManager, AiChatDialogFragment.TAG)
+            } else {
+                Log.e("ObservationAdapter", "Cannot get FragmentManager for AI Chat Dialog")
+            }
         }
 
         holder.deleteButton.setOnClickListener {

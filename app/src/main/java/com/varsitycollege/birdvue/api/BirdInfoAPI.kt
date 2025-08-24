@@ -3,6 +3,7 @@ package com.varsitycollege.birdvue.api
 import com.varsitycollege.birdvue.data.BirdInfo
 import okhttp3.MultipartBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
@@ -35,4 +36,10 @@ interface BirdInfoAPI {
         @Part file: MultipartBody.Part, // The image file part
         @Header("x-api-key") apiKey: String
     ): Response<VerifyBirdImageResponse>
+
+    @POST // If using @Url, leave this empty. Otherwise, specify the relative path.
+    suspend fun postTextToLex(
+        @Url lexEndpointUrl: String, // Full URL to Lex postText endpoint
+        @Body request: LexV2BotRequest
+    ): Response<LexV2BotResponse>
 }

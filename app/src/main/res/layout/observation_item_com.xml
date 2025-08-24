@@ -115,7 +115,7 @@
 
 
             <Button
-                android:id="@+id/commentButton"
+                android:id="@+id/aiChatButton"
                 style="?attr/materialIconButtonFilledTonalStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

@@ -57,25 +57,25 @@ class HomeActivity : AppCompatActivity() {
         model = ViewModelProvider(this)[HomeViewModel::class.java]
         bottomNavigationView = binding.bottomNavView
 
-        //Fix layout for insets
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(0, systemBars.top, 0, 0) // push content away from bars
-            //binding.fabAdd.translationY = -systemBars.bottom / 2f
-
-            insets
-        }
-
-        // Force initial dispatch
-        ViewCompat.requestApplyInsets(binding.root)
-
-        ViewCompat.setOnApplyWindowInsetsListener(binding.fabAdd) { fab, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            fab.translationY = -systemBars.bottom.toFloat() / 2f // keep above nav bar, add margin if needed
-            insets
-        }
+//        //Fix layout for insets
+//        WindowCompat.setDecorFitsSystemWindows(window, false)
+//
+//        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+//            view.setPadding(0, systemBars.top, 0, 0) // push content away from bars
+//            //binding.fabAdd.translationY = -systemBars.bottom / 2f
+//
+//            insets
+//        }
+//
+//        // Force initial dispatch
+//        ViewCompat.requestApplyInsets(binding.root)
+//
+//        ViewCompat.setOnApplyWindowInsetsListener(binding.fabAdd) { fab, insets ->
+//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+//            fab.translationY = -systemBars.bottom.toFloat() / 2f // keep above nav bar, add margin if needed
+//            insets
+//        }
 
 
         //Set startup fragment, keep current fragment if dark mode changes
