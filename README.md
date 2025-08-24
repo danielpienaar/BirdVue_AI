@@ -51,6 +51,17 @@ Because every sighting should give you **knowledge gains**: fast identifications
 
 ---
 
+## Non-AI related features added during the hackathon
+
+* Updated dependencies and versions
+* Fixed bugs
+* Added ability to search the maps
+* Fixed UI display issues
+* Added usernames to the community posts
+* Other
+
+---
+
 ## Repos
 
 * **Android-facing Bird Chat (App Runner, OpenAI)**: [https://github.com/janro13806/BirdChatVoel](https://github.com/janro13806/BirdChatVoel)
