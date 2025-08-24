@@ -30,6 +30,8 @@
         <item name="android:statusBarColor">@color/md_theme_light_primary</item>
         <!-- Observation card background -->
         <item name="android:colorPrimaryDark">#ffffff</item>
+        <item name="colorAi">@color/md_theme_light_AI</item>
+        <item name="colorOnAi">@color/md_theme_light_on_AI</item>
     </style>
 
     <style name="Theme.BirdVue" parent="Base.Theme.BirdVue" />

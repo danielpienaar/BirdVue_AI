@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorAi" format="color" />
+    <attr name="colorOnAi" format="color" />
+</resources>

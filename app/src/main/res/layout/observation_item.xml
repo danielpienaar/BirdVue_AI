@@ -103,23 +103,27 @@
             android:orientation="horizontal">
 
             <Button
+                android:id="@+id/aiChatButton"
+                style="?attr/materialIconButtonFilledTonalStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="?colorAi"
+                app:icon="@drawable/outline_mode_comment_24"
+                app:iconGravity="textEnd"
+                app:iconSize="23dp"
+                app:iconTint="?colorOnAi"
+                android:text="Ask AI  "
+                android:textColor="?colorOnAi"
+                android:includeFontPadding="false"
+                android:paddingBottom="10dp"/>
+
+            <Button
                 android:id="@+id/likeButton"
                 style="?attr/materialIconButtonFilledTonalStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:backgroundTint="?colorSecondaryContainer"
                 app:icon="@drawable/heart_border_24"
-                app:iconGravity="textStart"
-                app:iconSize="23dp"
-                app:iconTint="?colorOnSecondaryContainer" />
-
-            <Button
-                android:id="@+id/aiChatButton"
-                style="?attr/materialIconButtonFilledTonalStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="?colorSecondaryContainer"
-                app:icon="@drawable/outline_mode_comment_24"
                 app:iconGravity="textStart"
                 app:iconSize="23dp"
                 app:iconTint="?colorOnSecondaryContainer" />
