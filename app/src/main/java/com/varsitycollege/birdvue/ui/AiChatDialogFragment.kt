@@ -7,19 +7,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.varsitycollege.birdvue.R
-import com.varsitycollege.birdvue.api.LexV2BotRequest
-import com.varsitycollege.birdvue.api.LexSessionStateInput
 import com.varsitycollege.birdvue.api.BirdInfoAPI
+import com.varsitycollege.birdvue.api.LexSessionStateInput
+import com.varsitycollege.birdvue.api.LexV2BotRequest
 import com.varsitycollege.birdvue.data.ChatMessage
 import com.varsitycollege.birdvue.data.Observation
 import com.varsitycollege.birdvue.data.SenderType
-import com.varsitycollege.birdvue.databinding.DialogAiChatBinding // Your existing dialog layout binding
+import com.varsitycollege.birdvue.databinding.DialogAiChatBinding
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.HttpException

@@ -1,15 +1,9 @@
 package com.varsitycollege.birdvue
 
 import android.content.Intent
-import android.content.res.Configuration
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.widget.Button
-import androidx.activity.result.launch
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.work.PeriodicWorkRequestBuilder

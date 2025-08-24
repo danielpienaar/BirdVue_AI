@@ -2,27 +2,18 @@ package com.varsitycollege.birdvue
 
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.content.res.Resources
-import android.content.res.Resources.Theme
 import android.graphics.Color
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.TypedValue
-import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.textfield.TextInputLayout
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
-import com.google.firebase.Firebase
 import com.varsitycollege.birdvue.databinding.ActivityLoginBinding
 
 class LoginActivity : AppCompatActivity() {
