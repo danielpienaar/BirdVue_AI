@@ -6,13 +6,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
-import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
@@ -28,15 +26,15 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.core.view.View
-import com.google.firebase.Firebase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.storage
-import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
 import com.varsitycollege.birdvue.BuildConfig.BIRD_INFO_AI_API_KEY
+import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
 import com.varsitycollege.birdvue.api.BirdInfoAPI
-import com.varsitycollege.birdvue.api.EBirdAPI
 import com.varsitycollege.birdvue.data.BirdCacheDao
 import com.varsitycollege.birdvue.data.BirdCacheEntry
 import com.varsitycollege.birdvue.data.BirdInfo
@@ -45,7 +43,6 @@ import com.varsitycollege.birdvue.data.Observation
 import com.varsitycollege.birdvue.databinding.ActivityAddSightingMapBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -61,115 +58,181 @@ import java.io.InputStream
 import java.net.URL
 import java.util.concurrent.TimeUnit
 
-class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationButtonClickListener {
+class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback,
+    GoogleMap.OnMyLocationButtonClickListener {
 
     private lateinit var binding: ActivityAddSightingMapBinding
-    private val LOCATION_PERMISSION_REQUEST_CODE = 1001 // You can use any integer value here
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1001
+
     private var googleMap: GoogleMap? = null
     private lateinit var userLocation: LatLng
     private lateinit var selectedLocation: LatLng
 
     private lateinit var overlayLayout: RelativeLayout
-    private var uriMap: Uri? = null
     private lateinit var loadingIndicator: ProgressBar
+
+    private var uriMap: Uri? = null
     private var downloadUrl: String? = null
     private var downloadUrlMap: String? = null
+
     private val _birdInfo = MutableLiveData<BirdInfo>()
     val birdInfo: MutableLiveData<BirdInfo> = _birdInfo
+
     private var selectedImageUriForAI: Uri? = null
-    private val VERIFY_IMAGE_URL = "https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/verifybirdimage"
+
+    private val VERIFY_IMAGE_URL =
+        "https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/verifybirdimage"
     private val PREDICT_SPECIES_URL = "https://sveiaufbgb.eu-west-1.awsapprunner.com/predict"
+
+    private lateinit var usersRef: DatabaseReference
+
+    private val birdDao: BirdCacheDao by lazy {
+        BirdInfoDatabase.getDatabase(applicationContext).birdCacheDao()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAddSightingMapBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        //Fix layout for insets
+        // Edge-to-edge
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(0, systemBars.top, 0, systemBars.bottom) // push content away from bars
-
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, bars.top, 0, bars.bottom)
             insets
         }
 
-        configureMap()
-        // Setup autocomplete
-        if (!com.google.android.libraries.places.api.Places.isInitialized()) {
-            com.google.android.libraries.places.api.Places.initialize(this, GOOGLE_MAPS_API_KEY)
-        }
-        setupAutocomplete()
+        usersRef = FirebaseDatabase
+            .getInstance("https://birdvue-9288a-default-rtdb.europe-west1.firebasedatabase.app/")
+            .getReference("users")
 
         loadingIndicator = findViewById(R.id.loadingIndicator)
         overlayLayout = findViewById(R.id.overlayLayout)
 
-//        binding.statMap.setOnClickListener{
-//            downloadStaticMap()
-//        }
-        // registers a photo picker activity launcher in single select mode.
-        // Link: https://developer.android.com/training/data-storage/shared/photopicker
-        // accessed: 13 October 2023
+        configureMap()
+        ensurePlacesInitialized()
+        setupAutocomplete()
+
         val pickMedia =
             registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                // this callback is invoked after they choose an image or close the photo picker
-                //Set the image of the UI imageview
+                // user picked or dismissed
                 binding.openGalleryButton.setImageURI(uri)
                 selectedImageUriForAI = uri
-                //On submit, upload image then observation
+
                 binding.overviewSubmitButton.setOnClickListener {
-                    if (uri != null) {
-                        if (binding.birdNameFieldEditText.text.toString().isBlank()) {
-                            Toast.makeText(applicationContext, "Please specify a bird name", Toast.LENGTH_SHORT).show()
+                    if (uri == null) {
+                        toast("Please select a photo")
+                        return@setOnClickListener
+                    }
+                    if (binding.birdNameFieldEditText.text.toString().isBlank()) {
+                        toast("Please specify a bird name")
+                        return@setOnClickListener
+                    }
+                    showLoadingOverlay()
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val isBird = checkIfBird(uri)
+                        if (isBird) {
+                            downloadStaticMap(uri) // continues upload flow
                         } else {
-                            showLoadingOverlay()
-                            CoroutineScope(Dispatchers.Main).launch {
-                                val isBird = checkIfBird(uri)
-                                if (isBird) {
-                                    downloadStaticMap(uri) // continues upload
-                                } else {
-                                    Toast.makeText(applicationContext, "This image is not a bird", Toast.LENGTH_SHORT).show()
-                                    hideLoadingOverlay()
-                                }
-                            }
+                            toast("This image is not a bird")
+                            hideLoadingOverlay()
                         }
-                    } else {
-                        Toast.makeText(applicationContext, "Please select a photo", Toast.LENGTH_SHORT).show()
                     }
                 }
 
                 binding.aiAutofillButton.setOnClickListener {
-                    if (uri != null) {
-                        showLoadingOverlay()
-                        CoroutineScope(Dispatchers.Main).launch {
-                            val isBird = checkIfBird(uri)
-                            if (isBird) {
-                                Toast.makeText(applicationContext, "Successfully identified as a bird, predicting type...", Toast.LENGTH_SHORT).show()
-                                uploadImageForPrediction(uri) // calls predict + fetchBirdInfo
-                            } else {
-                                Toast.makeText(applicationContext, "This image is not a bird", Toast.LENGTH_SHORT).show()
-                                hideLoadingOverlay()
-                            }
+                    if (uri == null) {
+                        toast("Please select a photo")
+                        return@setOnClickListener
+                    }
+                    showLoadingOverlay()
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val isBird = checkIfBird(uri)
+                        if (isBird) {
+                            toast("Successfully identified as a bird, predicting type...")
+                            uploadImageForPrediction(uri) // predict + fetchBirdInfo
+                        } else {
+                            toast("This image is not a bird")
+                            hideLoadingOverlay()
                         }
-                    } else {
-                        Toast.makeText(applicationContext, "Please select a photo", Toast.LENGTH_SHORT).show()
                     }
                 }
-
             }
 
         binding.openGalleryButton.setOnClickListener {
-            // Launch the photo picker and let the user choose only images.
             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
-
     }
 
-    private suspend fun checkIfBird(imageUri: Uri): Boolean {
-        return withContext(Dispatchers.IO) {
+    // --- AI verification / prediction ---
+
+    private suspend fun checkIfBird(imageUri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val imageFilePart = prepareFilePart("file", imageUri) ?: return@withContext false
+            val okHttpClient = OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build()
+
+            val retrofit = Retrofit.Builder()
+                .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
+                .client(okHttpClient)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+
+            val api = retrofit.create(BirdInfoAPI::class.java)
+            val resp = api.verifyBirdImage(VERIFY_IMAGE_URL, imageFilePart, BIRD_INFO_AI_API_KEY)
+
+            if (resp.isSuccessful && resp.body()?.isOk == true) {
+                Log.d("AIProcess", "Verified as bird: ${resp.body()}")
+                true
+            } else {
+                Log.w("AIProcess", "Not a bird or API error: ${resp.code()}, Body: ${resp.body()}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("AIProcess", "Error verifying bird: ${e.message}", e)
+            false
+        }
+    }
+
+    private fun prepareFilePart(partName: String, fileUri: Uri): MultipartBody.Part? {
+        val cr = applicationContext.contentResolver
+        return try {
+            var fileName = "uploaded_image.jpg"
+            cr.query(fileUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (idx != -1) fileName = cursor.getString(idx)
+                }
+            }
+            cr.openInputStream(fileUri)?.use { inputStream ->
+                val mime = cr.getType(fileUri) ?: "image/*"
+                val temp = File.createTempFile("upload", ".tmp", applicationContext.cacheDir)
+                FileOutputStream(temp).use { fos -> inputStream.copyTo(fos) }
+                val req = temp.asRequestBody(mime.toMediaTypeOrNull())
+                MultipartBody.Part.createFormData(partName, fileName, req)
+            }
+        } catch (e: Exception) {
+            Log.e("PrepareFilePart", "Error preparing file part: ${e.message}", e)
+            toast("Error preparing image for upload")
+            null
+        }
+    }
+
+    private fun uploadImageForPrediction(imageUri: Uri) {
+        showLoadingOverlay()
+        CoroutineScope(Dispatchers.Main).launch {
             try {
-                val imageFilePart = prepareFilePart("file", imageUri) ?: return@withContext false
+                val part = withContext(Dispatchers.IO) { prepareFilePart("file", imageUri) }
+                if (part == null) {
+                    toast("Could not prepare image for upload.")
+                    hideLoadingOverlay(); return@launch
+                }
+
+                Log.d("UploadImage", "Uploading to: $PREDICT_SPECIES_URL")
 
                 val okHttpClient = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
@@ -184,412 +247,268 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
                     .build()
 
                 val api = retrofit.create(BirdInfoAPI::class.java)
-                val response = api.verifyBirdImage(VERIFY_IMAGE_URL, imageFilePart, BIRD_INFO_AI_API_KEY)
+                val resp = api.predictImage(PREDICT_SPECIES_URL, part, BIRD_INFO_AI_API_KEY)
 
-                if (response.isSuccessful && response.body()?.isOk == true) {
-                    Log.d("AIProcess", "Verified as bird: ${response.body()}")
-                    true
-                } else {
-                    Log.w("AIProcess", "Not a bird or API error: ${response.code()}, Body: ${response.body()}")
-                    false
-                }
-            } catch (e: Exception) {
-                Log.e("AIProcess", "Error verifying bird: ${e.message}", e)
-                false
-            }
-        }
-    }
-
-
-    private fun prepareFilePart(partName: String, fileUri: Uri): MultipartBody.Part? {
-        // ContentResolver to get details and stream data from the URI
-        val contentResolver = applicationContext.contentResolver
-        try {
-            // Get the file name. If it's null, use a generic name.
-            var fileName = "uploaded_image.jpg" // Default filename
-            contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (nameIndex != -1) {
-                        fileName = cursor.getString(nameIndex)
-                    }
-                }
-            }
-
-            // Get an InputStream from the URI
-            contentResolver.openInputStream(fileUri)?.use { inputStream ->
-                // Get the MIME type of the file
-                val mimeType = contentResolver.getType(fileUri) ?: "image/*"
-
-                // Create a RequestBody from the InputStream
-                // We need the content length for the RequestBody.
-                // One way to get it is to copy the stream to a temporary file or byte array.
-                // For simplicity here, if your server doesn't strictly require Content-Length for the part,
-                // you might get away with creating RequestBody directly from bytes if the image isn't too large.
-                // However, the robust way is to stream it.
-
-                val tempFile = File.createTempFile("upload", ".tmp", applicationContext.cacheDir)
-                FileOutputStream(tempFile).use { fos ->
-                    inputStream.copyTo(fos)
-                }
-                val requestFile = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
-
-                // Create MultipartBody.Part using file name, request body
-                return MultipartBody.Part.createFormData(partName, fileName, requestFile)
-            }
-        } catch (e: Exception) {
-            Log.e("PrepareFilePart", "Error preparing file part: ${e.message}", e)
-            Toast.makeText(applicationContext, "Error preparing image for upload", Toast.LENGTH_LONG).show()
-            return null
-        }
-        return null
-    }
-
-    private fun uploadImageForPrediction(imageUri: Uri) {
-        showLoadingOverlay() // Show loading indicator
-
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                val imageFilePart = withContext(Dispatchers.IO) { // Perform file operations on IO thread
-                    prepareFilePart("file", imageUri)
-                }
-
-                if (imageFilePart == null) {
-                    Toast.makeText(applicationContext, "Could not prepare image for upload.", Toast.LENGTH_LONG).show()
-                    hideLoadingOverlay()
-                    return@launch
-                }
-
-                Log.d("UploadImage", "Uploading to: $PREDICT_SPECIES_URL with file part: ${imageFilePart.headers}")
-
-                val okHttpClient = OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS) // time allowed to establish connection
-                    .readTimeout(30, TimeUnit.SECONDS)    // time allowed for server to send response
-                    .writeTimeout(30, TimeUnit.SECONDS)   // time allowed to send request body
-                    .build()
-                //Call eBird api to fetch hotspot data
-                val retrofit = Retrofit.Builder()
-                    .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
-                    .client(okHttpClient)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
-
-                val api = retrofit.create(BirdInfoAPI::class.java)
-
-                val response = api.predictImage(PREDICT_SPECIES_URL, imageFilePart, BIRD_INFO_AI_API_KEY)
-
-                if (response.isSuccessful) {
-                    val prediction = response.body()
+                if (resp.isSuccessful) {
+                    val prediction = resp.body()
                     if (prediction?.predictedClass != null) {
-                        Toast.makeText(applicationContext, "Predicted: ${prediction.predictedClass}", Toast.LENGTH_SHORT).show()
-                        Log.i("UploadImage", "Prediction successful: ${response.body()}")
-                        //hideLoadingOverlay()
-                        // Now use this predicted_bird_name to call your fetchBirdInfoCoroutine
+                        toast("Predicted: ${prediction.predictedClass}")
                         fetchBirdInfoCoroutine(prediction.predictedClass)
-                        // The fetchBirdInfoCoroutine will handle its own loading overlay,
-                        // so we can hide the current one if it's separate.
-                        // If fetchBirdInfoCoroutine shows its own overlay, ensure they don't overlap awkwardly.
                     } else {
-                        Toast.makeText(applicationContext, "AI could not identify the bird.", Toast.LENGTH_SHORT).show()
-                        Log.w("UploadImage", "Prediction successful but no bird name in response: ${response.body()}")
+                        toast("AI could not identify the bird.")
+                        Log.w("UploadImage", "Prediction ok but no class: ${resp.body()}")
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Toast.makeText(applicationContext, "AI prediction failed: ${response.code()}", Toast.LENGTH_SHORT).show()
-                    Log.e("UploadImage", "API Error: ${response.code()} - ${response.message()}. Body: $errorBody")
+                    toast("AI prediction failed: ${resp.code()}")
+                    Log.e("UploadImage", "API Error: ${resp.code()} - ${resp.message()}")
                 }
             } catch (e: Exception) {
-                Toast.makeText(applicationContext, "Error during AI prediction: ${e.message}", Toast.LENGTH_LONG).show()
-                Log.e("UploadImage", "Exception: ${e.message}", e)
+                toast("Error during AI prediction: ${e.message}")
+                Log.e("UploadImage", "Exception", e)
             } finally {
-                // If fetchBirdInfoCoroutine has its own overlay logic, this might be handled there.
-                // Otherwise, ensure the overlay is hidden appropriately.
-                // For now, let's assume fetchBirdInfoCoroutine will manage the overlay state from this point.
-                // If not, uncomment hideLoadingOverlay() and re-enable the button.
-                //hideLoadingOverlay()
+                // overlay gets hidden by fetchBirdInfoCoroutine or later
             }
         }
-    }
-
-    private val birdDao: BirdCacheDao by lazy {
-        BirdInfoDatabase.getDatabase(applicationContext).birdCacheDao()
     }
 
     private fun fetchBirdInfoCoroutine(birdName: String) {
-        Toast.makeText(applicationContext, "Fetching bird info", Toast.LENGTH_SHORT).show()
-        //loading indicator here
-         showLoadingOverlay()
+        toast("Fetching bird info")
+        showLoadingOverlay()
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                // 1. Check cache first
-                val cachedBird = withContext(Dispatchers.IO) { // Perform DB operations on IO dispatcher
-                    birdDao.getBirdByName(birdName)
-                }
+                val cached = withContext(Dispatchers.IO) { birdDao.getBirdByName(birdName) }
+                val staleMs = 3 * 24 * 60 * 60 * 1000L
+                val isStale = cached?.let { (System.currentTimeMillis() - it.timestamp) > staleMs } ?: true
 
-                val threeDaysInMillis = 3 * 24 * 60 * 60 * 1000L
-                val isCacheStale = cachedBird?.let { (System.currentTimeMillis() - it.timestamp) > threeDaysInMillis } ?: true
-
-                if (cachedBird != null && !isCacheStale) {
-                    Toast.makeText(applicationContext, "Fetched from cache: $birdName", Toast.LENGTH_SHORT).show()
-                    // Update UI with cached data
-                    _birdInfo.postValue(BirdInfo(
-                        prompt = cachedBird.birdName,
-                        answer = cachedBird.description
-                    ))
-                    binding.birdNameFieldEditText.setText(cachedBird.birdName)
-                    binding.detailsFieldEditText.setText(cachedBird.description)
-                    Log.d("BirdInfoCache", "Bird info fetched from cache: ${cachedBird.birdName}")
+                if (cached != null && !isStale) {
+                    _birdInfo.postValue(BirdInfo(prompt = cached.birdName, answer = cached.description))
+                    binding.birdNameFieldEditText.setText(cached.birdName)
+                    binding.detailsFieldEditText.setText(cached.description)
+                    Log.d("BirdInfoCache", "From cache: ${cached.birdName}")
                 } else {
-                    Toast.makeText(applicationContext, "Fetching from API: $birdName", Toast.LENGTH_SHORT).show()
-                    //Call eBird api to fetch hotspot data
                     val retrofit = Retrofit.Builder()
                         .baseUrl("https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/")
                         .addConverterFactory(GsonConverterFactory.create())
                         .build()
 
                     val api = retrofit.create(BirdInfoAPI::class.java)
+                    val resp = api.getBirdInfo(birdName, BIRD_INFO_AI_API_KEY)
 
-                    val response = api.getBirdInfo(birdName, BIRD_INFO_AI_API_KEY)
-                    if (response.isSuccessful) {
-                        val birdInfo = response.body()
-                        if (birdInfo != null && birdInfo.prompt != null && birdInfo.answer != null) {
-                            _birdInfo.postValue(birdInfo)
-                            binding.birdNameFieldEditText.setText(birdInfo.prompt)
-                            binding.detailsFieldEditText.setText(birdInfo.answer)
-                            Log.d("BirdInfoAPI", "Bird info fetched successfully: ${response.body()?: "null"}")
+                    if (resp.isSuccessful) {
+                        val info = resp.body()
+                        if (info != null && info.prompt != null && info.answer != null) {
+                            _birdInfo.postValue(info)
+                            binding.birdNameFieldEditText.setText(info.prompt)
+                            binding.detailsFieldEditText.setText(info.answer)
 
-                            // 3. Save to cache
-                            val newCacheEntry = BirdCacheEntry(
-                                birdName = birdInfo.prompt,
-                                description = birdInfo.answer,
+                            val entry = BirdCacheEntry(
+                                birdName = info.prompt,
+                                description = info.answer,
                                 timestamp = System.currentTimeMillis()
                             )
                             withContext(Dispatchers.IO) {
-                                BirdInfoDatabase.insertAndManageCache(applicationContext, newCacheEntry)
+                                BirdInfoDatabase.insertAndManageCache(applicationContext, entry)
                             }
                         } else {
-                            Log.e("BirdInfoAPI", "API response body or details are null.")
-                            Toast.makeText(applicationContext, "Could not fetch details for $birdName", Toast.LENGTH_SHORT).show()
+                            toast("Could not fetch details for $birdName")
                         }
                     } else {
-                        Log.e("BirdInfoAPI", "API Error: ${response.code()}")
-                        Toast.makeText(applicationContext, "Could not fetch details for $birdName", Toast.LENGTH_SHORT).show()
+                        toast("Could not fetch details for $birdName")
+                        Log.e("BirdInfoAPI", "API Error: ${resp.code()}")
                     }
                 }
-
             } catch (e: Exception) {
-                Log.e("BirdInfoCoroutine", "Error fetching bird info for $birdName: ${e.message}", e)
-                Toast.makeText(applicationContext, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                Log.e("BirdInfoCoroutine", "Error fetching info for $birdName", e)
+                toast("Error: ${e.message}")
             } finally {
                 hideLoadingOverlay()
             }
+        }
+    }
 
+    // --- Places / Map ---
+
+    private fun ensurePlacesInitialized() {
+        if (!com.google.android.libraries.places.api.Places.isInitialized()) {
+            com.google.android.libraries.places.api.Places.initialize(this, GOOGLE_MAPS_API_KEY)
         }
     }
 
     private fun setupAutocomplete() {
-        val autocompleteFragment = supportFragmentManager
+        val frag = supportFragmentManager
             .findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment
 
-        // Specify which fields you want returned
-        autocompleteFragment.setPlaceFields(listOf(
-            com.google.android.libraries.places.api.model.Place.Field.ID,
-            com.google.android.libraries.places.api.model.Place.Field.NAME,
-            com.google.android.libraries.places.api.model.Place.Field.LAT_LNG
-        ))
+        frag.setPlaceFields(
+            listOf(
+                com.google.android.libraries.places.api.model.Place.Field.ID,
+                com.google.android.libraries.places.api.model.Place.Field.NAME,
+                com.google.android.libraries.places.api.model.Place.Field.LAT_LNG
+            )
+        )
 
-        autocompleteFragment.setOnPlaceSelectedListener(object :
+        frag.setOnPlaceSelectedListener(object :
             com.google.android.libraries.places.widget.listener.PlaceSelectionListener {
             override fun onPlaceSelected(place: com.google.android.libraries.places.api.model.Place) {
-                // Move camera to selected location
                 place.latLng?.let { latLng ->
-                    selectedLocation = latLng  // Update the selected location
-                    googleMap?.clear()  // Remove previous markers
+                    selectedLocation = latLng
+                    googleMap?.clear()
                     googleMap?.addMarker(MarkerOptions().position(latLng).title(place.name))
                     googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
                 }
             }
 
             override fun onError(status: com.google.android.gms.common.api.Status) {
-                //Toast.makeText(this@AddSightingMapActivity, "Error: $status", Toast.LENGTH_SHORT).show()
+                // no-op
             }
         })
     }
-
 
     private fun configureMap() {
-        val supportMapFragment =
-            supportFragmentManager.findFragmentById(R.id.map_fragment) as SupportMapFragment
-        supportMapFragment.getMapAsync(this)
-        // Async map
-        supportMapFragment.getMapAsync(OnMapReadyCallback { googleMap ->
-            // Allows user to select a custom location instead of their current location
-            googleMap.setOnMapClickListener { latLng ->
-                // When clicked on map
-                // Update selected location
+        val frag = supportFragmentManager.findFragmentById(R.id.map_fragment) as SupportMapFragment
+        frag.getMapAsync(this)
+        frag.getMapAsync { map ->
+            map.setOnMapClickListener { latLng ->
                 selectedLocation = latLng
-                // Initialize marker options
-                val markerOptions = MarkerOptions()
-                // Set position of marker
-                markerOptions.position(latLng)
-                // Set title of marker
-                markerOptions.title("${latLng.latitude} : ${latLng.longitude}")
-                // Remove all markers
-                googleMap.clear()
-                // Animating to zoom the marker
-                googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                // Add marker on map
-                googleMap.addMarker(markerOptions)
+                val markerOptions = MarkerOptions().position(latLng).title("${latLng.latitude} : ${latLng.longitude}")
+                map.clear()
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                map.addMarker(markerOptions)
             }
-            googleMap.uiSettings.isZoomControlsEnabled = true
-            googleMap.uiSettings.isMyLocationButtonEnabled = true
-        })
-    }
-
-    private fun enableMyLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                android.Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(
-                this,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            googleMap?.isMyLocationEnabled = true
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-            fusedLocationClient.lastLocation
-                .addOnSuccessListener { location ->
-                    location?.let {
-                        userLocation = LatLng(it.latitude, it.longitude)
-                        selectedLocation = userLocation
-                        googleMap?.animateCamera(
-                            CameraUpdateFactory.newLatLngZoom(
-                                userLocation,
-                                15f
-                            )
-                        )
-                    }
-                }
-        } else {
-            // Request location permissions
-            requestPermissions(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION
-                ),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
+            map.uiSettings.isZoomControlsEnabled = true
+            map.uiSettings.isMyLocationButtonEnabled = true
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    private fun enableMyLocation() {
+        val fine = android.Manifest.permission.ACCESS_FINE_LOCATION
+        val coarse = android.Manifest.permission.ACCESS_COARSE_LOCATION
+        if (ActivityCompat.checkSelfPermission(this, fine) == PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, coarse) == PackageManager.PERMISSION_GRANTED
+        ) {
+            googleMap?.isMyLocationEnabled = true
+            LocationServices.getFusedLocationProviderClient(this)
+                .lastLocation
+                .addOnSuccessListener { loc ->
+                    loc?.let {
+                        userLocation = LatLng(it.latitude, it.longitude)
+                        selectedLocation = userLocation
+                        googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 15f))
+                    }
+                }
+        } else {
+            requestPermissions(arrayOf(coarse, fine), LOCATION_PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, enable my location
-                enableMyLocation()
-            }
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE &&
+            grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            enableMyLocation()
         }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         this.googleMap = googleMap
-
         enableMyLocation()
     }
 
     override fun onMyLocationButtonClick(): Boolean {
-        // Reset the selected location to user's location
         selectedLocation = userLocation
-        // Remove all markers
         googleMap?.clear()
-        return false // Return false to let the default behavior occur
+        return false
     }
 
+    // --- Upload flows ---
+
     private fun uploadImage(imageUri: Uri?) {
-        // Generate a file name based on current time in milliseconds
         val fileName = "photo_${System.currentTimeMillis()}"
-        // Get a reference to the Firebase Storage
         val storageRef = FirebaseStorage.getInstance().reference.child("images/")
-        // Create a reference to the file location in Firebase Storage
         val imageRef = storageRef.child(fileName)
 
-        val uploadTask = imageRef.putFile(imageUri!!)
-        uploadTask.addOnCompleteListener {
+        val task = imageRef.putFile(imageUri ?: return)
+        task.addOnCompleteListener {
             if (it.isSuccessful) {
-                // Image upload successful
-                imageRef.downloadUrl.addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val uri = task.result
-                        downloadUrl = uri.toString()
-                        //Upload observation after getting the download URL
+                imageRef.downloadUrl.addOnCompleteListener { t ->
+                    if (t.isSuccessful) {
+                        downloadUrl = t.result.toString()
                         submitObservation()
                         hideLoadingOverlay()
                     } else {
-                        // Image upload failed
-                        Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show()
+                        toast("Failed to upload image")
                     }
                 }
             }
-        }
-        uploadTask.addOnFailureListener {
-            Toast.makeText(applicationContext, it.localizedMessage, Toast.LENGTH_LONG).show()
+        }.addOnFailureListener { ex ->
+            toast(ex.localizedMessage ?: "Upload failed")
         }
     }
 
     private fun submitObservation() {
-        try {
-            val dp = binding.datePicker1
-            val database =
-                FirebaseDatabase.getInstance("https://birdvue-9288a-default-rtdb.europe-west1.firebasedatabase.app/")
-            val ref = database.getReference("observations")
-            val key = ref.push().key
-            val observation = Observation(
-                id = key!!, // use a unique ID or use push() in Firebase
-                birdName = binding.birdNameFieldEditText.text.toString(),
-                date = "${dp.year}/${dp.month + 1}/${dp.dayOfMonth}",
-                photo = downloadUrl,
-                details = binding.detailsFieldEditText.text.toString(),
-                lat = selectedLocation.latitude,
-                lng = selectedLocation.longitude,
-                location = downloadUrlMap,
-                likes = 0, // ahd to put something here because of the data class
-                comments = emptyList(), // theres no comments for now i know
-                userId = FirebaseAuth.getInstance().currentUser!!.uid
-            )
-
-            // pushing the data for observation to firebase
-            // link: https://www.geeksforgeeks.org/how-to-save-data-to-the-firebase-realtime-database-in-android/
-            // accessed: 13 October 2023
-            ref.child(key).setValue(observation).addOnSuccessListener {
-                Toast.makeText(
-                    applicationContext,
-                    "Observation was added successfully.",
-                    Toast.LENGTH_LONG
-                ).show()
-                //Go back to the home page
-                val intent = Intent(this, HomeActivity::class.java)
-                startActivity(intent)
-                hideLoadingOverlay()
-            }.addOnFailureListener { e ->
-                Toast.makeText(
-                    applicationContext,
-                    "Error: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-                hideLoadingOverlay()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(applicationContext, e.localizedMessage, Toast.LENGTH_LONG).show()
-            hideLoadingOverlay()
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            toast("You must be logged in to submit.")
+            return
         }
+        if (!::selectedLocation.isInitialized) {
+            toast("Location not selected. Please pick a location on the map.")
+            return
+        }
+        val userId = currentUser.uid
+
+        usersRef.child(userId)
+            .child("username")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val username = snapshot.getValue(String::class.java) ?: "Anonymous"
+                    try {
+                        val dp = binding.datePicker1
+                        val db = FirebaseDatabase.getInstance(
+                            "https://birdvue-9288a-default-rtdb.europe-west1.firebasedatabase.app/"
+                        )
+                        val ref = db.getReference("observations")
+                        val key = ref.push().key ?: return
+
+                        val observation = Observation(
+                            id = key,
+                            birdName = binding.birdNameFieldEditText.text.toString(),
+                            date = "${dp.year}/${dp.month + 1}/${dp.dayOfMonth}",
+                            photo = downloadUrl,
+                            details = binding.detailsFieldEditText.text.toString(),
+                            lat = selectedLocation.latitude,
+                            lng = selectedLocation.longitude,
+                            location = downloadUrlMap,
+                            likes = 0,
+                            comments = emptyList(),
+                            userId = userId,
+                            userName = username
+                        )
+
+                        ref.child(key).setValue(observation)
+                            .addOnSuccessListener {
+                                toast("Observation was added successfully.")
+                                startActivity(Intent(this@AddSightingMapActivity, HomeActivity::class.java))
+                                hideLoadingOverlay()
+                            }
+                            .addOnFailureListener { e ->
+                                toast("Error: ${e.message}")
+                                hideLoadingOverlay()
+                            }
+                    } catch (e: Exception) {
+                        toast(e.localizedMessage ?: "Unknown error")
+                        hideLoadingOverlay()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    toast("Database error: ${error.message}")
+                }
+            })
     }
+
+    // --- Static maps (separate helpers) ---
 
     private suspend fun uploadStaticMapImage(
         apiKey: String,
@@ -598,47 +517,38 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
         size: String,
         scale: Int,
         format: String
-    ): String? {
-        return withContext(Dispatchers.IO) {
-            val marker = "markers=size:mid%7Ccolor:red%7Clabel:A%7C$center"
-            val url = "https://maps.googleapis.com/maps/api/staticmap?" +
-                    "center=$center&" +
-                    "zoom=$zoom&" +
-                    "size=$size&" +
-                    "scale=$scale&" +
-                    "format=$format&" +
-                    "$marker&" +
-                    "key=$apiKey"
-            Log.d("StaticMapImage", "URL: $url") // Print the URL to logcat
-            val imageUrl = URL(url)
-            val imageStream: InputStream = imageUrl.openStream()
-            val fileName = "photo_${System.currentTimeMillis()}"
-            val storageRef = FirebaseStorage.getInstance().reference.child("images/map_images")
-            val mapImageRef = storageRef.child(fileName)
-            val uploadTask = mapImageRef.putStream(imageStream)
-            uploadTask.await() // Wait for the upload task to complete
-            mapImageRef.downloadUrl.await().toString() // Get and return the download URL
-        }
+    ): String? = withContext(Dispatchers.IO) {
+        val marker = "markers=size:mid%7Ccolor:red%7Clabel:A%7C$center"
+        val url = "https://maps.googleapis.com/maps/api/staticmap?" +
+                "center=$center&zoom=$zoom&size=$size&scale=$scale&format=$format&$marker&key=$apiKey"
+        Log.d("StaticMapImage", "URL: $url")
+        val imageUrl = URL(url)
+        val imageStream: InputStream = imageUrl.openStream()
+        val fileName = "photo_${System.currentTimeMillis()}"
+        val storageRef = FirebaseStorage.getInstance().reference.child("images/map_images")
+        val mapImageRef = storageRef.child(fileName)
+        val uploadTask = mapImageRef.putStream(imageStream)
+        uploadTask.await()
+        mapImageRef.downloadUrl.await().toString()
     }
+
     private fun downloadStaticMap(imageUri: Uri?) {
         val apiKey = GOOGLE_MAPS_API_KEY
-        val center =
-            "${selectedLocation.latitude},${selectedLocation.longitude}" // Latitude,Longitude
+        val center = "${selectedLocation.latitude},${selectedLocation.longitude}"
         val zoom = 18
         val size = "640x480"
         val scale = 2
         val format = "png"
-        val filePath = "photoMap_${System.currentTimeMillis()}"
-//        test
 
         CoroutineScope(Dispatchers.Main).launch {
-             downloadUrlMap = withContext(Dispatchers.IO) {
-            uploadStaticMapImage(apiKey, center, zoom, size, scale, format)
-            }
+            downloadUrlMap = uploadStaticMapImage(apiKey, center, zoom, size, scale, format)
             uploadImage(imageUri)
             Log.d("Image URI", "$imageUri")
         }
     }
+
+    // --- UI helpers ---
+
     private fun showLoadingOverlay() {
         overlayLayout.visibility = android.view.View.VISIBLE
         loadingIndicator.visibility = android.view.View.VISIBLE
@@ -653,4 +563,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMa
         binding.overviewSubmitButton.isEnabled = true
     }
 
+    private fun toast(msg: String) =
+        Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
 }

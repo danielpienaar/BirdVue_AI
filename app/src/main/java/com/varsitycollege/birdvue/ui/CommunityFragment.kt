@@ -52,7 +52,6 @@ class CommunityFragment : Fragment() {
         // Initialize Firebase
         database = FirebaseDatabase.getInstance("https://birdvue-9288a-default-rtdb.europe-west1.firebasedatabase.app/")
         observationsRef = database.getReference("observations")
-        usersRef = database.getReference("users")
 
 
         observationComRecyclerView.layoutManager = LinearLayoutManager(context)
@@ -90,8 +89,8 @@ class CommunityFragment : Fragment() {
         } else {
             observationComArrayList.filter { observation ->
                 observation.date!!.contains(query, ignoreCase = true) ||
-                observation.birdName!!.contains(query, ignoreCase = true) ||
-                observation.userName!!.contains(query, ignoreCase = true) // filter by username
+                        observation.birdName!!.contains(query, ignoreCase = true) ||
+                        observation.userName!!.contains(query, ignoreCase = true) // filter by username
             }
         }
         updateRecyclerView(filteredList)
@@ -115,58 +114,64 @@ class CommunityFragment : Fragment() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val newObservationsList = mutableListOf<Observation>()
                 if (snapshot.exists()) {
-                    val totalObservations = snapshot.childrenCount.toInt()
+                    // The totalObservations and processedCount logic is no longer strictly necessary
+                    // because we are not doing asynchronous operations inside the loop anymore.
+                    // However, I will leave it for minimal changes as requested,
+                    // though it doesn't serve the same purpose of waiting for multiple async calls.
+
+                    val totalObservations = snapshot.childrenCount.toInt() // Can be removed if not using processedCount
                     if (totalObservations == 0) {
                         finalizeDataProcessing(newObservationsList) // Process empty list
                         return
                     }
-
-                    val processedCount = AtomicInteger(0)
+                    val processedCount = AtomicInteger(0) // Can be removed if not used below
 
                     for (observationSnapshot in snapshot.children) {
                         val observation = observationSnapshot.getValue(Observation::class.java)
                         if (observation != null) {
-                            observation.userId?.let { userId ->
-                                usersRef.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
-                                    override fun onDataChange(userSnapshot: DataSnapshot) {
-                                        val username = userSnapshot.child("username").getValue(String::class.java)
-                                        observation.userName = username ?: "Unknown User"
-                                        newObservationsList.add(observation)
+                            // userName is now directly available on the observation object
+                            // from when it was saved in AddSightingMapActivity.
 
-                                        if (processedCount.incrementAndGet() == totalObservations) {
-                                            finalizeDataProcessing(newObservationsList)
-                                        }
-                                    }
-
-                                    override fun onCancelled(error: DatabaseError) {
-                                        Log.e("CommunityGetData", "Error fetching username for ${observation.userId}", error.toException())
-                                        observation.userName = "Unknown User"
-                                        newObservationsList.add(observation)
-                                        if (processedCount.incrementAndGet() == totalObservations) {
-                                            finalizeDataProcessing(newObservationsList)
-                                        }
-                                    }
-                                })
-                            } ?: run {
-                                // userId is null on the observation
-                                Log.w("CommunityGetData", "Observation ${observation.id} has null userId")
-                                observation.userName = "User ID Missing"
-                                newObservationsList.add(observation)
-                                if (processedCount.incrementAndGet() == totalObservations) {
-                                    finalizeDataProcessing(newObservationsList)
+                            // Fallback for older data that might not have userName populated directly
+                            if (observation.userName == null) {
+                                if (observation.userId != null) {
+                                    // For older posts, you might still log or decide on a default.
+                                    // Since we are not fetching anymore, it will remain null or you can set a default.
+                                    Log.w("CommunityGetData", "Observation ${observation.id} has null userName, and no fetch is performed. UserID: ${observation.userId}")
+                                    observation.userName = "User (Legacy)" // Or "Unknown User", or leave as null if adapter handles it
+                                } else {
+                                    Log.w("CommunityGetData", "Observation ${observation.id} has null userId and null userName.")
+                                    observation.userName = "User ID Missing"
                                 }
+                            } else {
+                                // Log to confirm userName is present for new posts
+                                Log.d("CommunityGetData", "Observation ${observation.id} - User: ${observation.userName}, Bird: ${observation.birdName}")
                             }
+
+                            newObservationsList.add(observation)
+
+                            // This processedCount check is now less critical as there's no inner async call.
+                            // The loop will complete, and then finalizeDataProcessing will be called once.
+                            // If you remove totalObservations and processedCount, this if-block can be removed.
+                            if (processedCount.incrementAndGet() == totalObservations) {
+                                // This will now always be true only after the loop finishes.
+                                // finalizeDataProcessing(newObservationsList) // Moved outside the loop
+                            }
+
                         } else {
                             // Malformed observation data in Firebase
                             Log.w("CommunityGetData", "Skipping malformed observation: ${observationSnapshot.key}")
+                            // If you remove totalObservations and processedCount, this if-block can be removed.
                             if (processedCount.incrementAndGet() == totalObservations) {
-                                // Still need to count it to avoid getting stuck
-                                finalizeDataProcessing(newObservationsList)
+                                // finalizeDataProcessing(newObservationsList) // Moved outside the loop
                             }
                         }
                     }
-                } else {
+                    // Call finalizeDataProcessing once after the loop has processed all snapshots
                     finalizeDataProcessing(newObservationsList)
+                } else {
+                    // No observations exist at all
+                    finalizeDataProcessing(newObservationsList) // newObservationsList will be empty
                 }
             }
 
