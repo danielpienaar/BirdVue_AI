@@ -53,7 +53,8 @@
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:gravity="center"
-                android:layout_marginVertical="5dp"/>
+                android:layout_marginVertical="5dp"
+                android:layout_marginEnd="5dp"/>
 
             <TextView
                 android:id="@+id/speciesObserved"
@@ -65,7 +66,8 @@
                 android:text="Species observed: 693"
                 android:textSize="16sp"
                 android:textStyle="italic"
-                android:layout_marginVertical="5dp"/>
+                android:layout_marginVertical="5dp"
+                android:layout_marginEnd="5dp"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -75,6 +77,7 @@
             android:src="@drawable/icon_navigation_arrow"
             app:tint="?attr/colorSecondary"
             android:layout_marginStart="0dp"
+            android:layout_marginEnd="8dp"
             app:maxImageSize="40dp"
             app:borderWidth="0dp"/>
 
