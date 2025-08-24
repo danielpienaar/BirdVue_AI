@@ -35,6 +35,8 @@ import com.google.firebase.storage.FirebaseStorage
 import com.varsitycollege.birdvue.BuildConfig.BIRD_INFO_AI_API_KEY
 import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
 import com.varsitycollege.birdvue.BuildConfig.BIRD_REST_API_STAGE_BASE_URL
+import com.varsitycollege.birdvue.BuildConfig.VERIFY_IMAGE_URL
+import com.varsitycollege.birdvue.BuildConfig.PREDICT_SPECIES_URL
 import com.varsitycollege.birdvue.api.BirdInfoAPI
 import com.varsitycollege.birdvue.data.BirdCacheDao
 import com.varsitycollege.birdvue.data.BirdCacheEntry
@@ -81,9 +83,6 @@ class AddSightingMapActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private var selectedImageUriForAI: Uri? = null
 
-    private val VERIFY_IMAGE_URL =
-        "https://kpcs4l6aa3.execute-api.eu-west-1.amazonaws.com/BirdRESTApiStage/verifybirdimage"
-    private val PREDICT_SPECIES_URL = "https://sveiaufbgb.eu-west-1.awsapprunner.com/predict"
 
     private lateinit var usersRef: DatabaseReference
 
