@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:background="@drawable/chat_bubble_user"
         android:padding="10dp"
-        android:textColor="?attr/colorOnPrimary"
+        android:textColor="?attr/colorOnSecondary"
         android:layout_gravity="end"
         android:text="User message here" />
 </LinearLayout>

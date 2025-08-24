@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:background="@drawable/chat_bubble_ai"
         android:padding="10dp"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textColor="?attr/colorOnSurface"
         android:layout_gravity="start"
         android:text="AI response here" />
 </LinearLayout>
