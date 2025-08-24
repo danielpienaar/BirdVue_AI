@@ -62,7 +62,7 @@ Because every sighting should give you **knowledge gains**: fast identifications
 
 ---
 
-## Repos
+## Other Repos
 
 * **Android-facing Bird Chat (App Runner, OpenAI)**: [https://github.com/janro13806/BirdChatVoel](https://github.com/janro13806/BirdChatVoel)
   Provides `/ask` and `/qa` endpoints for summaries and Q\&A.
