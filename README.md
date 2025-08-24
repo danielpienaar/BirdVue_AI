@@ -127,3 +127,5 @@ Because every sighting should give you **knowledge gains**: fast identifications
 ## Credits
 
 Team Voël 🐦 — thanks to the hackathon organizers and the open-source/model providers!
+
+Contact us for local files and other things if you would like to run the app.
