@@ -1,17 +1,15 @@
 package com.varsitycollege.birdvue.ui
 
 import android.content.pm.PackageManager
-import kotlin.math.*
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -20,20 +18,10 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.MarkerOptions
-import com.varsitycollege.birdvue.BuildConfig
-import com.varsitycollege.birdvue.R
-import com.varsitycollege.birdvue.api.EBirdAPI
-import com.varsitycollege.birdvue.data.Hotspot
-import com.varsitycollege.birdvue.databinding.FragmentHotspotBinding
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -43,11 +31,25 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.varsitycollege.birdvue.BuildConfig
+import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
+import com.varsitycollege.birdvue.R
+import com.varsitycollege.birdvue.api.EBirdAPI
 import com.varsitycollege.birdvue.data.HomeViewModel
+import com.varsitycollege.birdvue.data.Hotspot
 import com.varsitycollege.birdvue.data.HotspotAdapter
 import com.varsitycollege.birdvue.data.Observation
+import com.varsitycollege.birdvue.databinding.FragmentHotspotBinding
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.text.DecimalFormat
-import com.varsitycollege.birdvue.BuildConfig.GOOGLE_MAPS_API_KEY
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class HotspotFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMyLocationButtonClickListener  {
 
